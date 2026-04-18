@@ -1,0 +1,66 @@
+:root {
+  --color-bg: #f4f6fb;
+  --color-sidebar: #1a1625;
+  --color-sidebar-hover: #2d2640;
+  --color-sidebar-active: #7c6af5;
+  --color-primary: #7c6af5;
+  --color-primary-light: #a89af8;
+  --color-primary-dark: #5b4de0;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  --color-border: #e2e8f0;
+  --color-card: #ffffff;
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --sidebar-width: 240px;
+  --header-height: 60px;
+  --font-sans: 'Noto Sans TC', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #app { height: 100%; font-family: var(--font-sans); font-size: 14px; color: var(--color-text-primary); background: var(--color-bg); -webkit-font-smoothing: antialiased; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.el-card { border: 1px solid var(--color-border) !important; border-radius: var(--radius-md) !important; box-shadow: var(--shadow-sm) !important; }
+.el-table { --el-table-header-bg-color: #f8fafc; font-size: 13px; }
+.el-table th.el-table__cell { font-weight: 600; color: var(--color-text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+.el-button--primary { --el-button-bg-color: var(--color-primary); --el-button-border-color: var(--color-primary); --el-button-hover-bg-color: var(--color-primary-dark); --el-button-hover-border-color: var(--color-primary-dark); }
+.el-tag { border-radius: 20px; font-size: 11px; font-weight: 600; }
+.el-pagination { justify-content: flex-end; margin-top: 16px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.page-title { font-size: 20px; font-weight: 700; }
+.page-subtitle { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; }
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: var(--color-card); border-radius: var(--radius-md); padding: 18px; box-shadow: var(--shadow-sm); border: 1px solid var(--color-border); }
+.stat-card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+.stat-card-value { font-size: 24px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat-card-label { font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; }
+.filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; background: var(--color-card); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge-completed  { background: #d1fae5; color: #065f46; }
+.badge-shipped    { background: #ffedd5; color: #9a3412; }
+.badge-processing { background: #ede9fe; color: #5b21b6; }
+.badge-paid       { background: #dbeafe; color: #1e40af; }
+.badge-cancelled  { background: #f1f5f9; color: #475569; }
+.badge-pending    { background: #fef3c7; color: #92400e; }
+.badge-active     { background: #d1fae5; color: #065f46; }
+.badge-inactive   { background: #f1f5f9; color: #475569; }
+.badge-warning    { background: #fef3c7; color: #92400e; }
+.badge-danger     { background: #fee2e2; color: #991b1b; }
+.page-enter-active, .page-leave-active { transition: opacity 0.18s, transform 0.18s; }
+.page-enter-from { opacity: 0; transform: translateY(6px); }
+.page-leave-to { opacity: 0; }
+
+/* ─────────────────────────────────────────────────────────────────
+   JelloJam ERP Design System  •  last updated 2026-04
+   Primary: #6366f1  Success: #10b981  Warning: #f59e0b  Danger: #ef4444
+───────────────────────────────────────────────────────────────── */
