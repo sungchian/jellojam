@@ -29,6 +29,13 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('jj_user'); localStorage.removeItem('jj_token')
   }
 
+  function switchUser(u) {
+    user.value  = u
+    token.value = 'jj_' + Date.now()
+    localStorage.setItem('jj_user',  JSON.stringify(u))
+    localStorage.setItem('jj_token', token.value)
+  }
+
   const roleLabel = computed(() => ({ super_admin: '超級管理員', admin: '管理員' }[user.value?.role] || ''))
-  return { user, token, isLoggedIn, login, logout, roleLabel }
+  return { user, token, isLoggedIn, login, logout, switchUser, roleLabel }
 })

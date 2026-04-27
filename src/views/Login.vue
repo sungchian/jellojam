@@ -29,7 +29,7 @@
           <span class="demo-role">{{ acc.role }}</span>
           <span class="demo-email">{{ acc.email }}</span>
         </div>
-        <p class="demo-pwd">密碼均為：<code>admin123</code></p>
+        <p class="demo-pwd">密碼均為：<code>jellojam2026</code></p>
       </div>
     </div>
   </div>
@@ -46,20 +46,19 @@ const auth = useAuthStore()
 const formRef = ref()
 const loading = ref(false)
 
-const form = ref({ email: 'super@nagou.com', password: 'admin123' })
+const form = ref({ email: 'kelsey@jellojam.com', password: 'jellojam2026' })
 const rules = {
   email: [{ required: true, message: '請輸入電子郵件', trigger: 'blur' }],
   password: [{ required: true, message: '請輸入密碼', trigger: 'blur' }],
 }
 const demoAccounts = [
-  { role: '超級管理員', email: 'super@nagou.com' },
-  { role: '管理員', email: 'admin@nagou.com' },
-  { role: '財務人員', email: 'finance@nagou.com' },
+  { role: '超級管理員', email: 'kelsey@jellojam.com' },
+  { role: '管理員',   email: 'karina@jellojam.com' },
 ]
 
 function fillDemo(acc) {
   form.value.email = acc.email
-  form.value.password = 'admin123'
+  form.value.password = 'jellojam2026'
 }
 
 async function handleLogin() {

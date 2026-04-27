@@ -229,7 +229,8 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Money } from '@element-plus/icons-vue'
-import { mockInventory as mockProducts } from '@/mock/data'
+import { useAppDataStore } from '@/stores/appData'
+const store = useAppDataStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -283,9 +284,10 @@ async function save() {
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await store.fetchAll()
   if (isEdit.value) {
-    const found = mockProducts.find(p => p.id == route.params.id)
+    const found = store.mockInventory.find(p => String(p.id) === String(route.params.id))
     if (found) Object.assign(form.value, found)
   }
 })

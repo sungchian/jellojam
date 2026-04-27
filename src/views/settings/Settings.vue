@@ -177,10 +177,10 @@
         <!-- 權限管理 -->
         <div v-if="activeSection === 'roles'">
           <h3 class="section-title">🔑 帳號與權限管理</h3>
-          <el-table :data="staffAccounts" style="margin-bottom:16px">
-            <el-table-column label="姓名" prop="name" width="120" />
-            <el-table-column label="Email" prop="email" min-width="180" />
-            <el-table-column label="角色" width="130">
+          <el-table border :data="staffAccounts" style="margin-bottom:16px">
+            <el-table-column label="姓名" prop="name" :width="COL.staff_name" />
+            <el-table-column label="Email" prop="email" :min-width="COL.staff_email" />
+            <el-table-column label="角色" :width="COL.staff_role">
               <template #default="{ row }">
                 <el-select v-model="row.role" size="small" style="width:120px">
                   <el-option label="超級管理員" value="super_admin" />
@@ -190,19 +190,19 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="狀態" width="90" align="center">
+            <el-table-column label="狀態" :width="COL.staff_status" align="center">
               <template #default="{ row }">
                 <el-switch v-model="row.active" />
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="120">
+            <el-table-column label="操作" :width="COL.staff_actions" align="center">
               <template #default="{ row }">
-                <el-button text type="primary" size="small" @click="editStaff(row)">編輯</el-button>
-                <el-button text type="danger" size="small" @click="deleteStaff(row)">刪除</el-button>
+                <el-button text type="primary" size="small" @click="openEdit(row)">編輯</el-button>
+                <el-button text type="danger"  size="small" @click="deleteStaff(row)">刪除</el-button>
               </template>
             </el-table-column>
           </el-table>
-          <el-button type="primary" :icon="Plus" @click="addStaff">新增人員</el-button>
+          <el-button type="primary" :icon="Plus" @click="openCreate">新增人員</el-button>
         </div>
 
         <!-- 操作日誌 -->
@@ -217,14 +217,14 @@
             </el-select>
             <el-date-picker v-model="logDateRange" type="daterange" start-placeholder="開始" end-placeholder="結束" style="width:240px" />
           </div>
-          <el-table :data="auditLogs" size="small">
-            <el-table-column prop="time" label="時間" width="160" />
-            <el-table-column prop="operator" label="操作人" width="100" />
-            <el-table-column prop="action" label="操作內容" min-width="200" />
-            <el-table-column prop="ip" label="IP 位址" width="140">
+          <el-table border :data="auditLogs" size="small">
+            <el-table-column prop="time" label="時間" :width="COL.log_time" />
+            <el-table-column prop="operator" label="操作人" :width="COL.log_operator" />
+            <el-table-column prop="action" label="操作內容" :min-width="COL.log_action" show-overflow-tooltip />
+            <el-table-column prop="ip" label="IP 位址" :width="COL.log_ip">
               <template #default="{ row }"><span style="font-family:var(--font-mono);font-size:12px">{{ row.ip }}</span></template>
             </el-table-column>
-            <el-table-column label="結果" width="80" align="center">
+            <el-table-column label="結果" :width="COL.log_result" align="center">
               <template #default="{ row }">
                 <span :class="row.success ? 'badge badge-active' : 'badge badge-danger'">{{ row.success ? '成功' : '失敗' }}</span>
               </template>
@@ -234,70 +234,211 @@
       </el-card>
     </div>
   </div>
+
+  <!-- ── 新增 / 編輯人員 Modal ───────────────────────────────── -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="showStaffModal" class="modal-backdrop" @click.self="closeStaffModal">
+        <div class="modal-box">
+          <div class="modal-header">
+            <span class="modal-title">{{ staffModalMode === 'edit' ? '編輯人員' : '新增人員' }}</span>
+            <el-button text @click="closeStaffModal"><el-icon><Close /></el-icon></el-button>
+          </div>
+
+          <div class="modal-body">
+            <el-form :model="staffForm" label-width="90px" label-position="left">
+              <el-form-item label="姓名" required>
+                <el-input v-model="staffForm.name" placeholder="輸入姓名" />
+              </el-form-item>
+              <el-form-item label="Email" required>
+                <el-input v-model="staffForm.email" placeholder="輸入 Email" />
+              </el-form-item>
+              <el-form-item label="角色">
+                <el-select v-model="staffForm.role" style="width:100%">
+                  <el-option v-for="(label, val) in ROLE_LABELS" :key="val" :label="label" :value="val" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="啟用狀態">
+                <el-switch v-model="staffForm.active" />
+                <span class="switch-hint">{{ staffForm.active ? '啟用中' : '已停用' }}</span>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <div class="modal-footer">
+            <el-button @click="closeStaffModal">取消</el-button>
+            <el-button type="primary" @click="saveStaff" :loading="staffSaving">
+              {{ staffModalMode === 'edit' ? '儲存變更' : '新增人員' }}
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Close } from '@element-plus/icons-vue'
+import { supabase } from '@/lib/supabase'
+
+// ── Column widths (single source of truth) ──────────────────────
+const COL = {
+  // 帳號與權限 table
+  staff_name:    120,
+  staff_email:   180,  // min-width
+  staff_role:    160,
+  staff_status:   90,
+  staff_actions: 200,
+  // 操作日誌 table
+  log_time:      180,
+  log_operator:  120,
+  log_action:    200,  // min-width
+  log_ip:        140,
+  log_result:    120,
+}
+
+const ROLE_LABELS = {
+  super_admin: '超級管理員',
+  admin:       '管理員',
+  finance:     '財務人員',
+  cs:          '客服人員',
+}
 
 const activeSection = ref('general')
-const refreshing = ref(false)
+const refreshing    = ref(false)
 const logActionFilter = ref('')
-const logDateRange = ref(null)
+const logDateRange    = ref(null)
 
 const navItems = [
-  { key: 'general', label: '基本設定', icon: 'Setting' },
-  { key: 'exchange', label: '匯率與費用', icon: 'Money' },
-  { key: 'payment', label: '金流設定', icon: 'CreditCard' },
-  { key: 'logistics', label: '物流設定', icon: 'Van' },
-  { key: 'notification', label: '通知設定', icon: 'Bell' },
-  { key: 'roles', label: '帳號與權限', icon: 'UserFilled' },
-  { key: 'logs', label: '操作日誌', icon: 'Document' },
+  { key: 'general',      label: '基本設定',   icon: 'Setting'    },
+  { key: 'exchange',     label: '匯率與費用', icon: 'Money'      },
+  { key: 'payment',      label: '金流設定',   icon: 'CreditCard' },
+  { key: 'logistics',    label: '物流設定',   icon: 'Van'        },
+  { key: 'notification', label: '通知設定',   icon: 'Bell'       },
+  { key: 'roles',        label: '帳號與權限', icon: 'UserFilled' },
+  { key: 'logs',         label: '操作日誌',   icon: 'Document'   },
 ]
 
 const generalForm = ref({
-  siteName: 'NagouBuy 北美代購',
-  supportEmail: 'service@nagoubuy.tw',
-  supportPhone: '0800-XXX-XXX',
-  announcement: '',
-  maintenance: false,
+  siteName: 'JelloJam 北美代購', supportEmail: 'jellycatstaiwan@outlook.com',
+  supportPhone: '0800-XXX-XXX', announcement: '', maintenance: false,
 })
-
 const exchangeForm = ref({
-  usdTwd: 32.5, defaultFeeRate: 10, intlShipping: 350, localShipping: 60, freeShippingThreshold: 5000
+  usdTwd: 32.5, defaultFeeRate: 10, intlShipping: 350, localShipping: 60, freeShippingThreshold: 5000,
 })
-
 const paymentMethods = ref([
-  { key: 'ecpay', name: '綠界科技 ECPay', desc: '支援信用卡、ATM、超商代碼', icon: '💳', enabled: true, merchantId: '', hashKey: '', testMode: true },
-  { key: 'linepay', name: 'LINE Pay', desc: 'LINE Pay 線上支付', icon: '🟢', enabled: true, merchantId: '', hashKey: '', testMode: true },
-  { key: 'jko', name: '街口支付', desc: '街口 JKO Pay', icon: '🔵', enabled: false, merchantId: '', hashKey: '', testMode: false },
+  { key: 'ecpay',  name: '綠界科技 ECPay', desc: '支援信用卡、ATM、超商代碼', icon: '💳', enabled: true,  merchantId: '', hashKey: '', testMode: true  },
+  { key: 'linepay',name: 'LINE Pay',       desc: 'LINE Pay 線上支付',          icon: '🟢', enabled: true,  merchantId: '', hashKey: '', testMode: true  },
+  { key: 'jko',    name: '街口支付',       desc: '街口 JKO Pay',               icon: '🔵', enabled: false, merchantId: '', hashKey: '', testMode: false },
 ])
-
-const logisticsForm = ref({
-  apiKey: '', storeCode: '', defaultMethod: 'home', autoCreate: true
-})
-
+const logisticsForm = ref({ apiKey: '', storeCode: '', defaultMethod: 'home', autoCreate: true })
 const notifForm = ref({
   smtpHost: 'smtp.gmail.com', smtpPort: 587, fromEmail: '', smtpPwd: '',
   orderConfirm: true, shipNotify: true, arrivalSms: false, lowStockAlert: true,
 })
 
-const staffAccounts = ref([
-  { id: 1, name: '超級管理員', email: 'super@nagou.com', role: 'super_admin', active: true },
-  { id: 2, name: '管理員', email: 'admin@nagou.com', role: 'admin', active: true },
-  { id: 3, name: '財務人員', email: 'finance@nagou.com', role: 'finance', active: true },
-  { id: 4, name: '客服小王', email: 'cs@nagou.com', role: 'cs', active: false },
-])
+// ── Staff accounts ───────────────────────────────────────────────
+const staffAccounts = ref([])
 
+async function fetchStaff() {
+  const { data, error } = await supabase
+    .from('staff_accounts')
+    .select('*')
+    .order('created_at', { ascending: true })
+  if (error) { ElMessage.error('載入人員失敗：' + error.message); return }
+  staffAccounts.value = data
+}
+
+// ── Edit / Create modal ──────────────────────────────────────────
+const showStaffModal = ref(false)
+const staffModalMode = ref('edit')   // 'edit' | 'create'
+const staffSaving    = ref(false)
+const editingId      = ref(null)
+
+const staffForm = ref({ name: '', email: '', role: 'cs', active: true })
+
+function openEdit(row) {
+  staffModalMode.value = 'edit'
+  editingId.value = row.id
+  staffForm.value = { name: row.name, email: row.email, role: row.role, active: row.active }
+  showStaffModal.value = true
+}
+
+function openCreate() {
+  staffModalMode.value = 'create'
+  editingId.value = null
+  staffForm.value = { name: '', email: '', role: 'cs', active: true }
+  showStaffModal.value = true
+}
+
+function closeStaffModal() { showStaffModal.value = false }
+
+async function saveStaff() {
+  if (!staffForm.value.name.trim() || !staffForm.value.email.trim()) {
+    ElMessage.warning('姓名與 Email 為必填'); return
+  }
+  staffSaving.value = true
+  try {
+    if (staffModalMode.value === 'edit') {
+      // ── UPDATE ──────────────────────────────────────────────
+      const { error } = await supabase
+        .from('staff_accounts')
+        .update({
+          name:   staffForm.value.name.trim(),
+          email:  staffForm.value.email.trim(),
+          role:   staffForm.value.role,
+          active: staffForm.value.active,
+        })
+        .eq('id', editingId.value)
+      if (error) throw error
+      // reactive patch
+      const target = staffAccounts.value.find(s => s.id === editingId.value)
+      if (target) Object.assign(target, staffForm.value)
+      ElMessage.success('人員資料已更新')
+    } else {
+      // ── INSERT ──────────────────────────────────────────────
+      const { data, error } = await supabase
+        .from('staff_accounts')
+        .insert({
+          name:   staffForm.value.name.trim(),
+          email:  staffForm.value.email.trim(),
+          role:   staffForm.value.role,
+          active: staffForm.value.active,
+        })
+        .select()
+        .single()
+      if (error) throw error
+      staffAccounts.value.push(data)
+      ElMessage.success('人員已新增')
+    }
+    closeStaffModal()
+  } catch (e) {
+    ElMessage.error('儲存失敗：' + e.message)
+  } finally {
+    staffSaving.value = false
+  }
+}
+
+async function deleteStaff(row) {
+  await ElMessageBox.confirm(`確定刪除人員「${row.name}」？`, '刪除確認', { type: 'warning' })
+  const { error } = await supabase.from('staff_accounts').delete().eq('id', row.id)
+  if (error) { ElMessage.error('刪除失敗：' + error.message); return }
+  staffAccounts.value = staffAccounts.value.filter(s => s.id !== row.id)
+  ElMessage.success('人員已刪除')
+}
+
+// ── Audit logs ───────────────────────────────────────────────────
 const auditLogs = ref([
   { time: '2026-04-17 10:32:15', operator: '超級管理員', action: '更新商品「Jellycat Bashful Bunny」價格', ip: '203.74.1.xxx', success: true },
-  { time: '2026-04-17 09:15:00', operator: '管理員', action: '更新訂單 ORD-202601012 狀態為已發貨', ip: '114.32.xx.xx', success: true },
-  { time: '2026-04-17 08:55:22', operator: '超級管理員', action: '系統登入', ip: '203.74.1.xxx', success: true },
-  { time: '2026-04-16 22:11:03', operator: '未知', action: '嘗試登入失敗（帳號不存在）', ip: '192.168.1.1', success: false },
-  { time: '2026-04-16 18:44:51', operator: '財務人員', action: '批准退款申請 #RF-005，金額 NT$ 1,380', ip: '61.x.x.x', success: true },
+  { time: '2026-04-17 09:15:00', operator: '管理員',     action: '更新訂單 ORD-202601012 狀態為已發貨',   ip: '114.32.xx.xx', success: true },
+  { time: '2026-04-17 08:55:22', operator: '超級管理員', action: '系統登入',                               ip: '203.74.1.xxx', success: true },
+  { time: '2026-04-16 22:11:03', operator: '未知',       action: '嘗試登入失敗（帳號不存在）',             ip: '192.168.1.1',  success: false },
+  { time: '2026-04-16 18:44:51', operator: '財務人員',   action: '批准退款申請 #RF-005，金額 NT$ 1,380',  ip: '61.x.x.x',     success: true },
 ])
 
+// ── Other ────────────────────────────────────────────────────────
 function save(section) { ElMessage.success(`${section}已儲存`) }
 async function refreshRate() {
   refreshing.value = true
@@ -307,13 +448,9 @@ async function refreshRate() {
   ElMessage.success('匯率已更新')
 }
 function testLogisticsApi() { ElMessage.success('API 連線測試成功 ✓') }
-function testEmail() { ElMessage.success('測試 Email 已發送') }
-function editStaff(row) { ElMessage.info(`編輯人員：${row.name}`) }
-async function deleteStaff(row) {
-  await ElMessageBox.confirm(`確定刪除人員「${row.name}」？`, '刪除確認', { type: 'warning' })
-  ElMessage.success('人員已刪除')
-}
-function addStaff() { ElMessage.info('新增人員功能（開啟表單）') }
+function testEmail()        { ElMessage.success('測試 Email 已發送')    }
+
+onMounted(fetchStaff)
 </script>
 
 <style scoped>
@@ -351,4 +488,37 @@ function addStaff() { ElMessage.info('新增人員功能（開啟表單）') }
 .payment-config { padding: 16px; border-top: 1px solid var(--color-border); }
 
 :deep(.logo-upload .el-upload--picture-card) { width: 80px; height: 80px; }
+
+/* ── Staff modal ─────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-box {
+  background: var(--color-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  width: 420px;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.modal-title { font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
+.modal-body  { padding: 20px; }
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+  background: #fafbff;
+}
+.switch-hint { margin-left: 10px; font-size: 12px; color: var(--color-text-muted); }
+
+/* spring enter */
+.modal-enter-active { transition: opacity 0.22s ease, transform 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+.modal-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.92) translateY(8px); }
 </style>

@@ -26,7 +26,7 @@ const routes = [
 const router = createRouter({ history: createWebHashHistory(), routes })
 
 router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem('erp_token')
+  const token = localStorage.getItem('jj_token')
   if (!to.meta.public && !token) return next('/login')
   next()
 })
