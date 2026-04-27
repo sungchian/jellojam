@@ -116,8 +116,9 @@
               :filters="purBankFilterOptions"
               :filter-method="() => true"
             />
-            <el-table-column label="" :width="COL.pur_actions" align="center" fixed="right">
+            <el-table-column label="操作" :width="COL.pur_actions" align="center" fixed="right">
               <template #default="{ row }">
+                <el-button text type="primary" size="small" :icon="Edit" @click="openPurEdit(row)">編輯</el-button>
                 <el-button text type="danger" size="small" :icon="Delete" @click="deletePurchase(row)" />
               </template>
             </el-table-column>
@@ -194,8 +195,9 @@
                 <el-tag size="small" :type="row.paid_by==='Kelsey'?'primary':'success'">{{ row.paid_by }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="" :width="COL.exp_actions" align="center" fixed="right">
+            <el-table-column label="操作" :width="COL.exp_actions" align="center" fixed="right">
               <template #default="{ row }">
+                <el-button text type="primary" size="small" :icon="Edit" @click="openExpEdit(row)">編輯</el-button>
                 <el-button text type="danger" size="small" :icon="Delete" @click="deleteExpense(row)" />
               </template>
             </el-table-column>
@@ -252,13 +254,13 @@
       </el-tab-pane>
     </el-tabs>
 
-    <!-- ── 新增採購 Modal ──────────────────────────────────────── -->
+    <!-- ── 採購 Modal（新增 / 編輯）──────────────────────────── -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showPurModal" class="modal-backdrop" @click.self="cancelPur">
           <div class="modal-panel">
             <div class="modal-head">
-              <span class="modal-title">新增採購記錄</span>
+              <span class="modal-title">{{ purMode === 'edit' ? '編輯採購記錄' : '新增採購記錄' }}</span>
               <el-button text :icon="Close" circle @click="cancelPur" />
             </div>
             <el-form ref="purFormRef" :model="purForm" :rules="purRules" label-width="110px" class="modal-form" @submit.prevent="submitPur">
@@ -322,7 +324,7 @@
             <div class="modal-foot">
               <el-button @click="cancelPur" :disabled="purSaving">取消</el-button>
               <el-button type="primary" @click="submitPur" :loading="purSaving">
-                {{ purSaving ? '寫入中…' : '新增採購' }}
+                {{ purSaving ? '儲存中…' : purMode === 'edit' ? '儲存變更' : '新增採購' }}
               </el-button>
             </div>
           </div>
@@ -330,13 +332,13 @@
       </Transition>
     </Teleport>
 
-    <!-- ── 新增費用 Modal ──────────────────────────────────────── -->
+    <!-- ── 費用 Modal（新增 / 編輯）──────────────────────────── -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showExpModal" class="modal-backdrop" @click.self="cancelExp">
           <div class="modal-panel">
             <div class="modal-head">
-              <span class="modal-title">新增營運費用</span>
+              <span class="modal-title">{{ expMode === 'edit' ? '編輯營運費用' : '新增營運費用' }}</span>
               <el-button text :icon="Close" circle @click="cancelExp" />
             </div>
             <el-form ref="expFormRef" :model="expForm" :rules="expRules" label-width="110px" class="modal-form" @submit.prevent="submitExp">
@@ -391,7 +393,7 @@
             <div class="modal-foot">
               <el-button @click="cancelExp" :disabled="expSaving">取消</el-button>
               <el-button type="primary" @click="submitExp" :loading="expSaving">
-                {{ expSaving ? '寫入中…' : '新增費用' }}
+                {{ expSaving ? '儲存中…' : expMode === 'edit' ? '儲存變更' : '新增費用' }}
               </el-button>
             </div>
           </div>
@@ -403,7 +405,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick, reactive } from 'vue'
-import { Search, Download, Refresh, Plus, Close, Delete } from '@element-plus/icons-vue'
+import { Search, Download, Refresh, Plus, Close, Delete, Edit } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
 import { useAppDataStore } from '@/stores/appData'
@@ -421,7 +423,7 @@ const COL = {
   pur_payer:    120,
   pur_order_no: 135,
   pur_bank:      88,
-  pur_actions:   60,
+  pur_actions:  130,
   // Expenses table
   exp_date:     120,
   exp_type:     110,
@@ -430,7 +432,7 @@ const COL = {
   exp_total:    110,
   exp_twd:      120,
   exp_payer:    120,
-  exp_actions:   60,
+  exp_actions:  130,
 }
 
 const store = useAppDataStore()
@@ -524,11 +526,13 @@ const expSortedFiltered = computed(() => {
 // ── 匯率換算 ────────────────────────────────────────────────────────
 const RATE = { USD: store.USD_TO_TWD, RMB: store.RMB_TO_TWD, GBP: 43, TWD: 1 }
 
-// ── 新增採購 Modal ──────────────────────────────────────────────────
-const showPurModal = ref(false)
-const purSaving    = ref(false)
-const purError     = ref('')
-const purFormRef   = ref(null)
+// ── 採購 Modal（新增 / 編輯）───────────────────────────────────────
+const showPurModal  = ref(false)
+const purMode       = ref('add')   // 'add' | 'edit'
+const editingPurId  = ref(null)
+const purSaving     = ref(false)
+const purError      = ref('')
+const purFormRef    = ref(null)
 const today = () => new Date().toISOString().slice(0, 10)
 
 const purForm = reactive({
@@ -559,6 +563,8 @@ watch([() => purForm.qty, () => purForm.unit_cost, () => purForm.currency], () =
 })
 
 function openPurModal() {
+  purMode.value = 'add'
+  editingPurId.value = null
   Object.assign(purForm, {
     purchase_date: today(), product_name: '', qty: 1,
     currency: 'USD', unit_cost: 0, total_cost: 0, total_cost_twd: 0,
@@ -567,6 +573,26 @@ function openPurModal() {
   purError.value = ''
   showPurModal.value = true
 }
+
+function openPurEdit(row) {
+  purMode.value = 'edit'
+  editingPurId.value = row.id
+  Object.assign(purForm, {
+    purchase_date:   row.purchase_date || row.date || today(),
+    product_name:    row.product_name   || '',
+    qty:             row.qty            ?? 1,
+    currency:        row.currency       || 'USD',
+    unit_cost:       row.unit_cost      ?? 0,
+    total_cost:      row.total_cost     ?? 0,
+    total_cost_twd:  row.total_cost_twd ?? 0,
+    paid_by:         row.paid_by        || 'Kelsey',
+    bank:            row.bank           || '',
+    vendor_order_no: row.vendor_order_no || '',
+  })
+  purError.value = ''
+  showPurModal.value = true
+}
+
 function cancelPur() { if (!purSaving.value) showPurModal.value = false }
 
 async function submitPur() {
@@ -574,26 +600,31 @@ async function submitPur() {
   if (!valid) return
   purSaving.value = true
   purError.value  = ''
+  const payload = {
+    purchase_date:   purForm.purchase_date,
+    product_name:    purForm.product_name.trim(),
+    qty:             purForm.qty,
+    currency:        purForm.currency,
+    unit_cost:       purForm.unit_cost,
+    total_cost:      purForm.total_cost,
+    total_cost_twd:  purForm.total_cost_twd,
+    paid_by:         purForm.paid_by,
+    bank:            purForm.bank || null,
+    vendor_order_no: purForm.vendor_order_no.trim() || null,
+  }
   try {
-    const { data, error: err } = await supabase
-      .from('purchases')
-      .insert({
-        purchase_date:   purForm.purchase_date,
-        product_name:    purForm.product_name.trim(),
-        qty:             purForm.qty,
-        currency:        purForm.currency,
-        unit_cost:       purForm.unit_cost,
-        total_cost:      purForm.total_cost,
-        total_cost_twd:  purForm.total_cost_twd,
-        paid_by:         purForm.paid_by,
-        bank:            purForm.bank || null,
-        vendor_order_no: purForm.vendor_order_no.trim() || null,
-      })
-      .select()
-      .single()
-    if (err) throw new Error(err.message)
-    store.purchasesRaw.push(data)
-    ElMessage.success(`已新增採購：${purForm.product_name}`)
+    if (purMode.value === 'edit') {
+      const { error: err } = await supabase.from('purchases').update(payload).eq('id', editingPurId.value)
+      if (err) throw new Error(err.message)
+      const row = store.purchasesRaw.find(p => p.id === editingPurId.value)
+      if (row) Object.assign(row, payload)
+      ElMessage.success(`已更新採購：${purForm.product_name}`)
+    } else {
+      const { data, error: err } = await supabase.from('purchases').insert(payload).select().single()
+      if (err) throw new Error(err.message)
+      store.purchasesRaw.push(data)
+      ElMessage.success(`已新增採購：${purForm.product_name}`)
+    }
     showPurModal.value = false
   } catch (err) {
     purError.value = err.message
@@ -602,11 +633,13 @@ async function submitPur() {
   }
 }
 
-// ── 新增費用 Modal ──────────────────────────────────────────────────
-const showExpModal = ref(false)
-const expSaving    = ref(false)
-const expError     = ref('')
-const expFormRef   = ref(null)
+// ── 費用 Modal（新增 / 編輯）───────────────────────────────────────
+const showExpModal  = ref(false)
+const expMode       = ref('add')   // 'add' | 'edit'
+const editingExpId  = ref(null)
+const expSaving     = ref(false)
+const expError      = ref('')
+const expFormRef    = ref(null)
 
 const expForm = reactive({
   expense_date: today(),
@@ -635,6 +668,8 @@ watch([() => expForm.qty, () => expForm.unit_cost, () => expForm.currency], () =
 })
 
 function openExpModal() {
+  expMode.value = 'add'
+  editingExpId.value = null
   Object.assign(expForm, {
     expense_date: today(), type: '', qty: null,
     currency: 'TWD', unit_cost: null, total_cost: null,
@@ -643,6 +678,24 @@ function openExpModal() {
   expError.value = ''
   showExpModal.value = true
 }
+
+function openExpEdit(row) {
+  expMode.value = 'edit'
+  editingExpId.value = row.id
+  Object.assign(expForm, {
+    expense_date: row.expense_date || row.date || today(),
+    type:         row.type         || '',
+    qty:          row.qty          ?? null,
+    currency:     row.currency     || 'TWD',
+    unit_cost:    row.unit_cost    ?? null,
+    total_cost:   row.total_cost   ?? null,
+    amount_twd:   row.amount_twd   ?? 0,
+    paid_by:      row.paid_by      || 'Kelsey',
+  })
+  expError.value = ''
+  showExpModal.value = true
+}
+
 function cancelExp() { if (!expSaving.value) showExpModal.value = false }
 
 async function submitExp() {
@@ -650,24 +703,29 @@ async function submitExp() {
   if (!valid) return
   expSaving.value = true
   expError.value  = ''
+  const payload = {
+    expense_date: expForm.expense_date,
+    type:         expForm.type,
+    qty:          expForm.qty        ?? null,
+    unit_cost:    expForm.unit_cost  ?? null,
+    currency:     expForm.currency   || null,
+    total_cost:   expForm.total_cost ?? null,
+    amount_twd:   expForm.amount_twd,
+    paid_by:      expForm.paid_by,
+  }
   try {
-    const { data, error: err } = await supabase
-      .from('expenses')
-      .insert({
-        expense_date: expForm.expense_date,
-        type:         expForm.type,
-        qty:          expForm.qty       ?? null,
-        unit_cost:    expForm.unit_cost ?? null,
-        currency:     expForm.currency  || null,
-        total_cost:   expForm.total_cost ?? null,
-        amount_twd:   expForm.amount_twd,
-        paid_by:      expForm.paid_by,
-      })
-      .select()
-      .single()
-    if (err) throw new Error(err.message)
-    store.expensesRaw.push(data)
-    ElMessage.success(`已新增費用：${expForm.type}`)
+    if (expMode.value === 'edit') {
+      const { error: err } = await supabase.from('expenses').update(payload).eq('id', editingExpId.value)
+      if (err) throw new Error(err.message)
+      const row = store.expensesRaw.find(e => e.id === editingExpId.value)
+      if (row) Object.assign(row, payload)
+      ElMessage.success(`已更新費用：${expForm.type}`)
+    } else {
+      const { data, error: err } = await supabase.from('expenses').insert(payload).select().single()
+      if (err) throw new Error(err.message)
+      store.expensesRaw.push(data)
+      ElMessage.success(`已新增費用：${expForm.type}`)
+    }
     showExpModal.value = false
   } catch (err) {
     expError.value = err.message

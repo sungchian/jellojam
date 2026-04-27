@@ -383,8 +383,8 @@ const sortedFiltered = computed(() => {
   const { prop, order } = sortState.value
   if (!prop || !order) return filtered.value
   return [...filtered.value].sort((a, b) => {
-    const av = a[prop] ?? -1
-    const bv = b[prop] ?? -1
+    const av = a[prop] ?? ''
+    const bv = b[prop] ?? ''
     if (typeof av === 'string') return order === 'ascending' ? av.localeCompare(bv) : bv.localeCompare(av)
     return order === 'ascending' ? av - bv : bv - av
   })
