@@ -119,7 +119,7 @@
             <el-table-column label="操作" :width="COL.pur_actions" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button text type="primary" size="small" :icon="Edit" @click="openPurEdit(row)">編輯</el-button>
-                <el-button text type="danger" size="small" :icon="Delete" @click="deletePurchase(row)" />
+                <el-button text type="danger" size="small" :icon="Delete" @click="deletePurchase(row)">刪除</el-button>
               </template>
             </el-table-column>
           </el-table>
