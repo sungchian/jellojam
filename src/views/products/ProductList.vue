@@ -374,7 +374,9 @@ onMounted(() => store.fetchAll())
 // ── 分類選項：官方 CATEGORY_ZH_MAP key 優先，DB 其他值補在後面 ──────
 const categoryOptions = computed(() => {
   const official = Object.keys(CATEGORY_ZH_MAP)
-  const extras   = store.jellycatCategories.filter(c => !official.includes(c))
+  const extras   = store.jellycatCategories
+    .map(c => c.trim())
+    .filter(c => c && !official.includes(c))
   return [...official, ...extras]
 })
 

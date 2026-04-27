@@ -311,10 +311,12 @@ const CATEGORY_ZH_MAP = {
   'Accessories':              '配件',
 }
 
-// 官方分類優先，DB 其他值補後面
+// 官方分類優先，DB 其他值補後面（trim 防止空白造成重複）
 const categoryOptions = computed(() => {
   const official = Object.keys(CATEGORY_ZH_MAP)
-  const extras   = store.jellycatCategories.filter(c => !official.includes(c))
+  const extras   = store.jellycatCategories
+    .map(c => c.trim())
+    .filter(c => c && !official.includes(c))
   return [...official, ...extras]
 })
 
