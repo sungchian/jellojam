@@ -38,7 +38,7 @@
         <div class="filter-bar">
           <el-input v-model="search" placeholder="搜尋商品名稱…" :prefix-icon="Search" clearable style="width:240px" />
           <el-select v-model="filterCat" placeholder="Jellycat 分類" clearable style="width:200px">
-            <el-option v-for="c in store.jellycatCategories" :key="c" :label="c" :value="c" />
+            <el-option v-for="c in categoryOptions" :key="c" :label="CATEGORY_ZH_MAP[c] || c" :value="c" />
           </el-select>
           <el-select v-model="filterStock" placeholder="庫存狀態" clearable style="width:130px">
             <el-option label="正常" value="normal" />
@@ -75,9 +75,11 @@
               :filter-method="() => true"
             >
               <template #default="{ row }">
-                <el-tag v-if="row.jellycat_category" size="small" type="info" style="max-width:80%;overflow:hidden;text-overflow:ellipsis">
-                  {{ row.jellycat_category }}
-                </el-tag>
+                <el-tooltip v-if="row.jellycat_category" :content="row.jellycat_category" placement="top">
+                  <el-tag size="small" type="info" style="max-width:100%;overflow:hidden;text-overflow:ellipsis">
+                    {{ row.jellycat_category_zh || CATEGORY_ZH_MAP[row.jellycat_category] || row.jellycat_category }}
+                  </el-tag>
+                </el-tooltip>
               </template>
             </el-table-column>
 
@@ -220,7 +222,11 @@
                   placeholder="選擇或輸入分類"
                   filterable allow-create style="width:100%"
                 >
-                  <el-option v-for="c in store.jellycatCategories" :key="c" :label="c" :value="c" />
+                  <el-option
+                    v-for="c in categoryOptions" :key="c"
+                    :label="`${CATEGORY_ZH_MAP[c] || c}　${c}`"
+                    :value="c"
+                  />
                 </el-select>
               </el-form-item>
 
@@ -283,11 +289,34 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Search, Download, Refresh, Edit, Close } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAppDataStore } from '@/stores/appData'
 import { supabase } from '@/lib/supabase'
+
+// ── 英文 → 繁中 分類對照（與 ProductList 保持一致）───────────
+const CATEGORY_ZH_MAP = {
+  'Animals':                  '動物',
+  'Amuseables Food & Drink':  '趣味食品飲品',
+  'Amuseables Nature':        '趣味自然',
+  'Amuseables Objects':       '趣味物品',
+  'Bag Charms':               '包包吊飾',
+  'Bags':                     '包款',
+  'Bashful Bunnies':          '害羞兔',
+  'Blossom Bunnies':          '碎花兔',
+  'Exclusive':                '限定款',
+  'Festive':                  '節慶系列',
+  'Gifts':                    '禮物系列',
+  'Accessories':              '配件',
+}
+
+// 官方分類優先，DB 其他值補後面
+const categoryOptions = computed(() => {
+  const official = Object.keys(CATEGORY_ZH_MAP)
+  const extras   = store.jellycatCategories.filter(c => !official.includes(c))
+  return [...official, ...extras]
+})
 
 // ── Column widths (single source of truth) ──────────────────
 const COL = {
@@ -325,7 +354,7 @@ const activeColFilters = ref({})
 
 const jellycatFilterOptions = computed(() =>
   [...new Set(store.mockInventory.map(p => p.jellycat_category).filter(Boolean))]
-    .sort().map(v => ({ text: v, value: v }))
+    .sort().map(v => ({ text: CATEGORY_ZH_MAP[v] || v, value: v }))
 )
 const boxFilterOptions = computed(() =>
   [...new Set(store.mockInventory.map(p => p.box).filter(Boolean))]
