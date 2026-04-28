@@ -303,8 +303,8 @@
                 <el-form-item label="加購金額">
                   <el-input-number v-model="newOrderForm.addon_amount" :min="0" :precision="0" style="width:100%" controls-position="right" />
                 </el-form-item>
-                <el-form-item label="賣貨便金額">
-                  <el-input-number v-model="newOrderForm.logistics_fee" :min="0" :precision="0" style="width:100%" controls-position="right" />
+                <el-form-item label="7-11費用">
+                  <el-input-number v-model="newOrderForm.fee_711" :min="0" :precision="0" style="width:100%" controls-position="right" />
                 </el-form-item>
               </div>
             </el-form>
@@ -640,7 +640,7 @@ const newOrderForm = reactive({
   note:            '',
   payment_amount:  0,
   addon_amount:    0,
-  logistics_fee:   0,
+  fee_711:         0,
 })
 
 const orderItems = ref([{ product_name: '', qty: 1, selling_price: 0 }])
@@ -715,7 +715,7 @@ function openNewOrder() {
     sales_week: dateToWeek(new Date().toISOString().slice(0, 10)),
     customer_id: '', customer_name: '', logistics_name: '',
     group_name: '', status: '已填表單', note: '',
-    payment_amount: 0, addon_amount: 0, logistics_fee: 0,
+    payment_amount: 0, addon_amount: 0, fee_711: 0,
   })
   orderItems.value   = [{ product_name: '', qty: 1, selling_price: 0 }]
   addonItems.value   = [{ name: '防水破壞袋', price: 0, qty: 1 }]
@@ -756,7 +756,7 @@ async function submitNewOrder() {
         note:            newOrderForm.note            || null,
         payment_amount:  newOrderForm.payment_amount  || null,
         addon_amount:    newOrderForm.addon_amount     || null,
-        logistics_fee:   newOrderForm.logistics_fee   || null,
+        '711_fee':       newOrderForm.fee_711          || null,
         addon_items:     addonItems.value.length ? addonItems.value : null,
       })
       .select()
