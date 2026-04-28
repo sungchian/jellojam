@@ -295,8 +295,8 @@
             <el-divider style="margin:14px 0 10px">
               <span class="section-label">財務</span>
             </el-divider>
-            <el-form label-width="130px">
-              <div class="form-row-3">
+            <el-form label-width="90px">
+              <div class="form-row-finance">
                 <el-form-item label="匯款金額">
                   <el-input-number v-model="newOrderForm.payment_amount" :min="0" :precision="0" style="width:100%" controls-position="right" />
                 </el-form-item>
@@ -825,7 +825,7 @@ onMounted(() => store.fetchAll())
   box-shadow: 0 24px 64px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08);
   display: flex; flex-direction: column; overflow: hidden;
 }
-.modal-panel--wide { width: 700px; }
+.modal-panel--wide { width: 860px; }
 .modal-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 18px 20px 14px; border-bottom: 1px solid var(--color-border, #e4e7ed);
@@ -839,8 +839,9 @@ onMounted(() => store.fetchAll())
   flex-shrink: 0;
 }
 .section-label { font-size: 12px; font-weight: 700; color: var(--color-text-secondary, #64748b); text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px; display: block; }
-.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
-.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 12px; }
+.form-row-2       { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.form-row-3       { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 12px; }
+.form-row-finance { display: grid; grid-template-columns: repeat(3, minmax(200px, 1fr)); gap: 0 20px; }
 
 /* items table */
 .items-head {
