@@ -378,6 +378,26 @@
             </div>
           </div>
 
+          <!-- 總金額 sticky bar -->
+          <div class="modal-summary">
+            <div class="modal-summary-row">
+              <span class="modal-summary-label">商品合計</span>
+              <span class="modal-summary-sub">NT$ {{ totalOrderSelling.toLocaleString() }}</span>
+            </div>
+            <div class="modal-summary-row">
+              <span class="modal-summary-label">加購合計</span>
+              <span class="modal-summary-sub">NT$ {{ totalAddon.toLocaleString() }}</span>
+            </div>
+            <div class="modal-summary-divider" />
+            <div class="modal-summary-row modal-summary-total-row">
+              <span class="modal-summary-total-label">總金額</span>
+              <span class="modal-summary-total-val">NT$ {{ totalAmount.toLocaleString() }}</span>
+            </div>
+            <div v-if="paymentOverTotal" class="modal-summary-warn">
+              ⚠ 匯款金額 NT$ {{ Number(newOrderForm.payment_amount).toLocaleString() }} 超過總金額，請確認
+            </div>
+          </div>
+
           <div v-if="newOrderError" class="error-block">{{ newOrderError }}</div>
           <div class="modal-foot">
             <el-button @click="cancelNewOrder" :disabled="newOrderSaving">取消</el-button>
@@ -626,7 +646,17 @@ const newOrderForm = reactive({
 const orderItems = ref([{ product_name: '', qty: 1, selling_price: 0 }])
 
 const totalOrderSelling = computed(() =>
-  orderItems.value.reduce((a, i) => a + (Number(i.selling_price) || 0), 0)
+  orderItems.value.reduce((a, i) => a + (Number(i.selling_price) || 0) * (Number(i.qty) || 1), 0)
+)
+
+// 總金額 = 商品合計 + 加購合計
+const totalAmount = computed(() => totalOrderSelling.value + totalAddon.value)
+
+// 匯款金額超過總金額提示（不擋）
+const paymentOverTotal = computed(() =>
+  Number(newOrderForm.payment_amount) > 0 &&
+  totalAmount.value > 0 &&
+  Number(newOrderForm.payment_amount) > totalAmount.value
 )
 
 // ── 加購項目 ────────────────────────────────────────────────────────
@@ -854,9 +884,32 @@ onMounted(() => store.fetchAll())
 .items-col-qty   { width: 88px; flex-shrink: 0; }
 .items-col-price { width: 130px; flex-shrink: 0; }
 
-/* total */
+/* total (inside sections) */
 .order-total { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 14px 4px 4px; border-top: 1px dashed var(--color-border); margin-top: 10px; }
 .order-total-label { font-size: 12px; color: var(--color-text-muted); }
+
+/* sticky 總金額 bar */
+.modal-summary {
+  flex-shrink: 0;
+  padding: 12px 24px 10px;
+  background: var(--color-bg, #f8fafc);
+  border-top: 1px solid var(--color-border, #e4e7ed);
+}
+.modal-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 3px 0; font-size: 13px;
+}
+.modal-summary-label { color: var(--color-text-muted, #94a3b8); }
+.modal-summary-sub   { font-family: var(--font-mono); color: var(--color-text-secondary, #64748b); font-size: 13px; }
+.modal-summary-divider { height: 1px; background: var(--color-border, #e4e7ed); margin: 8px 0 6px; }
+.modal-summary-total-row { padding: 4px 0 0; }
+.modal-summary-total-label { font-size: 14px; font-weight: 700; color: var(--color-text-primary, #1a1a2e); }
+.modal-summary-total-val   { font-size: 18px; font-weight: 800; font-family: var(--font-mono); color: var(--color-primary, #6366f1); }
+.modal-summary-warn {
+  margin-top: 8px; padding: 7px 12px;
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;
+  font-size: 12px; color: #b45309; font-weight: 500;
+}
 .order-total-val   { font-size: 16px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); }
 
 .error-block {
