@@ -342,6 +342,40 @@
               <span class="order-total-label">商品合計</span>
               <span class="order-total-val">NT$ {{ totalOrderSelling.toLocaleString() }}</span>
             </div>
+
+            <!-- ④ 加購項目 -->
+            <el-divider style="margin:14px 0 10px">
+              <span class="section-label">加購項目</span>
+            </el-divider>
+
+            <div class="items-head">
+              <span class="items-col-name">加購品項</span>
+              <span class="items-col-qty">數量</span>
+              <span class="items-col-price">單價 (TWD)</span>
+              <span style="width:32px"></span>
+            </div>
+
+            <div v-for="(addon, idx) in addonItems" :key="idx" class="items-row">
+              <el-select
+                v-model="addon.name"
+                filterable allow-create clearable
+                class="items-col-name"
+                placeholder="選擇加購品項"
+                @change="onAddonChange(addon)"
+              >
+                <el-option v-for="opt in ADDON_OPTIONS" :key="opt.name" :label="opt.name" :value="opt.name" />
+              </el-select>
+              <el-input-number v-model="addon.qty"   :min="1" :precision="0" class="items-col-qty"   controls-position="right" />
+              <el-input-number v-model="addon.price" :min="0" :precision="0" class="items-col-price" controls-position="right" />
+              <el-button text type="danger" :icon="Delete" @click="removeAddon(idx)" :disabled="addonItems.length === 1" style="flex-shrink:0" />
+            </div>
+
+            <el-button text type="primary" :icon="Plus" @click="addAddon" style="margin-top:10px">新增加購行</el-button>
+
+            <div class="order-total">
+              <span class="order-total-label">加購合計</span>
+              <span class="order-total-val">NT$ {{ totalAddon.toLocaleString() }}</span>
+            </div>
           </div>
 
           <div v-if="newOrderError" class="error-block">{{ newOrderError }}</div>
@@ -553,14 +587,14 @@ function exportCSV() {
 
 // ── 新增訂單 ────────────────────────────────────────────────────────
 
-// 週次從日期自動計算
+// 週次從日期自動計算（純數字 YYYYWW，如 202617）
 function dateToWeek(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   const year = d.getFullYear()
   const startOfYear = new Date(year, 0, 1)
   const weekNo = Math.ceil(((d - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7)
-  return `SW-${year}-${String(weekNo).padStart(2, '0')}`
+  return `${year}${String(weekNo).padStart(2, '0')}`
 }
 
 // Order No 前端產生（格式與 Google Sheets 一致）
@@ -595,6 +629,33 @@ const totalOrderSelling = computed(() =>
   orderItems.value.reduce((a, i) => a + (Number(i.selling_price) || 0), 0)
 )
 
+// ── 加購項目 ────────────────────────────────────────────────────────
+const ADDON_OPTIONS = [
+  { name: '防水破壞袋',          price: 0   },
+  { name: '紙箱',               price: 20  },
+  { name: 'Jellycat防塵袋-小',  price: 80  },
+  { name: 'Jellycat防塵袋-中',  price: 150 },
+  { name: 'Jellycat防塵袋(大)', price: 250 },
+  { name: 'Jellycat紙袋(中)',   price: 150 },
+  { name: 'Jellycat紙袋(大)',   price: 250 },
+]
+
+const addonItems = ref([{ name: '防水破壞袋', price: 0, qty: 1 }])
+
+const totalAddon = computed(() =>
+  addonItems.value.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 1), 0)
+)
+
+// 加購合計自動同步到 addon_amount
+watch(totalAddon, val => { newOrderForm.addon_amount = val })
+
+function onAddonChange(item) {
+  const found = ADDON_OPTIONS.find(o => o.name === item.name)
+  if (found) item.price = found.price
+}
+function addAddon()       { addonItems.value.push({ name: '', price: 0, qty: 1 }) }
+function removeAddon(idx) { if (addonItems.value.length > 1) addonItems.value.splice(idx, 1) }
+
 // 選日期 → 自動帶週次
 watch(() => newOrderForm.sales_date, val => {
   newOrderForm.sales_week = dateToWeek(val)
@@ -627,6 +688,7 @@ function openNewOrder() {
     payment_amount: 0, addon_amount: 0, logistics_fee: 0,
   })
   orderItems.value   = [{ product_name: '', qty: 1, selling_price: 0 }]
+  addonItems.value   = [{ name: '防水破壞袋', price: 0, qty: 1 }]
   newOrderError.value = ''
   showNewOrder.value  = true
 }
@@ -665,6 +727,7 @@ async function submitNewOrder() {
         payment_amount:  newOrderForm.payment_amount  || null,
         addon_amount:    newOrderForm.addon_amount     || null,
         logistics_fee:   newOrderForm.logistics_fee   || null,
+        addon_items:     addonItems.value.length ? addonItems.value : null,
       })
       .select()
       .single()
