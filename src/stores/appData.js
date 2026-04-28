@@ -51,6 +51,7 @@ export const useAppDataStore = defineStore('appData', () => {
   const inventoryRaw = ref([])
   const purchasesRaw = ref([])
   const expensesRaw  = ref([])
+  const pointsTxnRaw = ref([])   // points_transactions
 
   const loading     = ref(false)
   const error       = ref(null)
@@ -91,21 +92,44 @@ export const useAppDataStore = defineStore('appData', () => {
   // ── mockCustomers ─────────────────────────────────────────────────
   const mockCustomers = computed(() =>
     customersRaw.value.map(c => {
-      const custOrders = ordersRaw.value.filter(o => o.customer_id === c.id)
-      const custItems  = custOrders.flatMap(o => itemsRaw.value.filter(i => i.order_id === o.id))
-      // 集點：每隻娃娃（item qty）= 1 點，取消訂單不計
+      const custOrders   = ordersRaw.value.filter(o => o.customer_id === c.id)
+      const custItems    = custOrders.flatMap(o => itemsRaw.value.filter(i => i.order_id === o.id))
+      const custTxns     = pointsTxnRaw.value.filter(t => t.customer_id === c.id)
+
+      // ── 集點計算 ──────────────────────────────────────────────────
+      // 來源1：訂單商品 qty（有效訂單才算，取消不計）
       const activeOrders = custOrders.filter(o => o.status !== '顧客已取消')
       const activeItems  = activeOrders.flatMap(o => itemsRaw.value.filter(i => i.order_id === o.id))
-      const earnedPoints = activeItems.reduce((a, i) => a + (Number(i.qty) || 1), 0)
-      const tierCfg      = getTierByPoints(earnedPoints)
+      const pointsFromOrders = activeItems.reduce((a, i) => a + (Number(i.qty) || 1), 0)
+
+      // 來源2：手動紀錄 earn / adjust（正值）
+      const pointsFromEarn = custTxns
+        .filter(t => t.type === 'earn' || (t.type === 'adjust' && t.points > 0))
+        .reduce((a, t) => a + (Number(t.points) || 0), 0)
+
+      // 已兌換 & 負調整（從 redeem / 負 adjust 扣除）
+      const pointsRedeemed = custTxns
+        .filter(t => t.type === 'redeem' || (t.type === 'adjust' && t.points < 0))
+        .reduce((a, t) => a + Math.abs(Number(t.points) || 0), 0)
+
+      // lifetime_points：歷史累積賺到的點（只增不減，用於決定等級）
+      const lifetimePoints = pointsFromOrders + pointsFromEarn
+
+      // current_points：可兌換的餘額（可被兌換扣掉）
+      const currentPoints  = Math.max(0, lifetimePoints - pointsRedeemed)
+
+      // 等級依 lifetimePoints 決定（不因兌換下降）
+      const tierCfg = getTierByPoints(lifetimePoints)
+
       return {
         ...c,
-        name:          c.display_name || c.name || '',
-        order_count:   custOrders.length,
-        total_spent:   custItems.reduce((a, i) => a + (Number(i.selling_price) || 0), 0),
-        earned_points: earnedPoints,
-        tier:          tierCfg.name,
-        tierConfig:    tierCfg,
+        name:            c.display_name || c.name || '',
+        order_count:     custOrders.length,
+        total_spent:     custItems.reduce((a, i) => a + (Number(i.selling_price) || 0), 0),
+        lifetime_points: lifetimePoints,   // 歷史累積（決定等級）
+        current_points:  currentPoints,    // 當前可用餘額（可扣）
+        tier:            tierCfg.name,
+        tierConfig:      tierCfg,
       }
     })
   )
@@ -266,7 +290,7 @@ export const useAppDataStore = defineStore('appData', () => {
     error.value   = null
     try {
       // Fetch all tables independently — one failure won't break others
-      const [ord, itm, cust, prod, inv, pur, exp] = await Promise.all([
+      const [ord, itm, cust, prod, inv, pur, exp, ptxn] = await Promise.all([
         safeFetch('orders'),
         safeFetch('order_items'),
         safeFetch('customers'),
@@ -274,6 +298,7 @@ export const useAppDataStore = defineStore('appData', () => {
         safeFetch('inventory'),
         safeFetch('purchases'),
         safeFetch('expenses'),
+        safeFetch('points_transactions'),
       ])
       ordersRaw.value    = ord
       itemsRaw.value     = itm
@@ -282,11 +307,13 @@ export const useAppDataStore = defineStore('appData', () => {
       inventoryRaw.value = inv
       purchasesRaw.value = pur
       expensesRaw.value  = exp
+      pointsTxnRaw.value = ptxn
       initialized.value  = true
 
       console.log('[appData] Loaded:', {
         orders: ord.length, items: itm.length, customers: cust.length,
-        products: prod.length, inventory: inv.length, purchases: pur.length, expenses: exp.length,
+        products: prod.length, inventory: inv.length, purchases: pur.length,
+        expenses: exp.length, points_txns: ptxn.length,
       })
     } catch (err) {
       error.value = err.message
@@ -327,6 +354,6 @@ export const useAppDataStore = defineStore('appData', () => {
     totalRevenue, totalCost, totalExpense, totalProfit,
     mockDashStats,
     fetchAll, refresh, updateOrderStatus,
-    ordersRaw, itemsRaw, customersRaw, productsRaw, inventoryRaw, purchasesRaw, expensesRaw,
+    ordersRaw, itemsRaw, customersRaw, productsRaw, inventoryRaw, purchasesRaw, expensesRaw, pointsTxnRaw,
   }
 })
