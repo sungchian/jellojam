@@ -169,6 +169,26 @@ export const useAppDataStore = defineStore('appData', () => {
     mockInventory.value.filter(p => typeof p.current_stock === 'number' && p.current_stock <= 2)
   )
 
+  // ── storeProducts（前台商品列表）─────────────────────────────────────
+  // 每個商品加上 store_price（從歷史訂單算平均售價）和 in_stock
+  const storeProducts = computed(() =>
+    mockInventory.value
+      .filter(p => p.product_name)
+      .map(p => {
+        const soldItems = itemsRaw.value.filter(
+          i => i.product_name === p.product_name && Number(i.selling_price) > 0
+        )
+        const avgPrice = soldItems.length
+          ? Math.round(soldItems.reduce((a, i) => a + Number(i.selling_price), 0) / soldItems.length)
+          : null
+        return {
+          ...p,
+          store_price: avgPrice,
+          in_stock:    p.current_stock > 0,
+        }
+      })
+  )
+
   // ── mockPurchases ─────────────────────────────────────────────────
   const mockPurchases = computed(() =>
     purchasesRaw.value.map(p => ({ ...p, date: p.purchase_date }))
@@ -346,7 +366,7 @@ export const useAppDataStore = defineStore('appData', () => {
     ORDER_STATUSES, EXPENSE_TYPES, CURRENCIES, PAYERS, BANKS, USD_TO_TWD, RMB_TO_TWD,
     MEMBER_TIERS, getTierByPoints,
     loading, error, initialized,
-    mockSales, mockCustomers, mockInventory, mockPurchases, mockExpenses,
+    mockSales, mockCustomers, mockInventory, mockPurchases, mockExpenses, storeProducts,
     salesCustomers, salesProducts, salesGroups,
     jellycatCategories, lowStockProducts,
     purchaseSummaryByPayer, expenseSummaryByType,
