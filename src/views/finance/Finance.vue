@@ -198,7 +198,7 @@
             <el-table-column label="操作" :width="COL.exp_actions" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button text type="primary" size="small" :icon="Edit" @click="openExpEdit(row)">編輯</el-button>
-                <el-button text type="danger" size="small" :icon="Delete" @click="deleteExpense(row)" />
+                <el-button text type="danger" size="small" :icon="Delete" @click="deleteExpense(row)">刪除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -423,7 +423,7 @@ const COL = {
   pur_payer:    120,
   pur_order_no: 135,
   pur_bank:      88,
-  pur_actions:  130,
+  pur_actions:  180,
   // Expenses table
   exp_date:     120,
   exp_type:     110,
@@ -432,7 +432,7 @@ const COL = {
   exp_total:    110,
   exp_twd:      120,
   exp_payer:    120,
-  exp_actions:  130,
+  exp_actions:  180,
 }
 
 const store = useAppDataStore()

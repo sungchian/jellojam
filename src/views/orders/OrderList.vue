@@ -649,16 +649,6 @@ const totalOrderSelling = computed(() =>
   orderItems.value.reduce((a, i) => a + (Number(i.selling_price) || 0) * (Number(i.qty) || 1), 0)
 )
 
-// 總金額 = 商品合計 + 加購合計
-const totalAmount = computed(() => totalOrderSelling.value + totalAddon.value)
-
-// 匯款金額超過總金額提示（不擋）
-const paymentOverTotal = computed(() =>
-  Number(newOrderForm.payment_amount) > 0 &&
-  totalAmount.value > 0 &&
-  Number(newOrderForm.payment_amount) > totalAmount.value
-)
-
 // ── 加購項目 ────────────────────────────────────────────────────────
 const ADDON_OPTIONS = [
   { name: '防水破壞袋',          price: 0   },
@@ -678,6 +668,16 @@ const totalAddon = computed(() =>
 
 // 加購合計自動同步到 addon_amount
 watch(totalAddon, val => { newOrderForm.addon_amount = val })
+
+// 總金額 = 商品合計 + 加購合計（需在 totalAddon 定義後）
+const totalAmount = computed(() => totalOrderSelling.value + totalAddon.value)
+
+// 匯款金額超過總金額提示（不擋）
+const paymentOverTotal = computed(() =>
+  Number(newOrderForm.payment_amount) > 0 &&
+  totalAmount.value > 0 &&
+  Number(newOrderForm.payment_amount) > totalAmount.value
+)
 
 function onAddonChange(item) {
   const found = ADDON_OPTIONS.find(o => o.name === item.name)
