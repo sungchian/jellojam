@@ -20,7 +20,7 @@
           <RouterLink
             v-for="cat in quickCats"
             :key="cat.key"
-            :to="`/store/catalog?cat=${cat.key}`"
+            :to="{ path: '/store/catalog', query: { cat: cat.key } }"
             class="cat-card"
           >
             <div class="cat-emoji">{{ cat.emoji }}</div>

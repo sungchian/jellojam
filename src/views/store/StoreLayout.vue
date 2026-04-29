@@ -75,7 +75,7 @@
         <RouterLink
           v-for="cat in displayCategories"
           :key="cat"
-          :to="`/store/catalog?cat=${cat}`"
+          :to="{ path: '/store/catalog', query: { cat } }"
           class="cat-link"
           active-class=""
           :class="{ 'cat-active': route.query.cat === cat }"
@@ -88,7 +88,7 @@
     <!-- ══════════════ MAIN CONTENT ══════════════ -->
     <main class="store-main">
       <RouterView v-slot="{ Component, route: r }">
-        <Transition name="page" mode="out-in">
+        <Transition :name="mounted ? 'page' : ''" mode="out-in">
           <component :is="Component" :key="r.fullPath" />
         </Transition>
       </RouterView>
@@ -134,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore }        from '@/stores/cart'
@@ -156,10 +156,13 @@ function toggleLang() {
 
 // ── Scroll shadow ────────────────────────────────────────────────────────
 const isScrolled = ref(false)
+const mounted    = ref(false)   // prevents enter animation on first load
 function onScroll() { isScrolled.value = window.scrollY > 4 }
 onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
   store.fetchAll()
+  // delay one tick so initial mount has no transition class
+  nextTick(() => { mounted.value = true })
 })
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
