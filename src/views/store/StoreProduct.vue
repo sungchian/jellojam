@@ -4,17 +4,17 @@
     <!-- Product Not Found -->
     <div v-if="!product" class="not-found">
       <div class="not-found-icon">😢</div>
-      <h2 class="not-found-title">商品不存在</h2>
-      <p class="not-found-sub">找不到這件商品，可能已下架或連結有誤。</p>
-      <button class="back-btn" @click="$router.push('/store')">← 回到商城</button>
+      <h2 class="not-found-title">{{ t('product.not_found') }}</h2>
+      <p class="not-found-sub">{{ t('product.back') }}</p>
+      <button class="back-btn" @click="$router.push('/store')">← {{ t('product.back') }}</button>
     </div>
 
     <template v-else>
       <!-- Breadcrumb -->
       <div class="breadcrumb">
-        <router-link to="/store">首頁</router-link>
+        <router-link to="/store">{{ t('product.breadcrumb_home') }}</router-link>
         <span class="sep">/</span>
-        <router-link to="/store">商品</router-link>
+        <router-link to="/store">{{ t('product.breadcrumb_shop') }}</router-link>
         <span class="sep">/</span>
         <span class="current">{{ product.product_name }}</span>
       </div>
@@ -31,7 +31,7 @@
             <span class="main-emoji">{{ getEmoji(product.jellycat_category) }}</span>
             <!-- Sold out overlay -->
             <div v-if="product.current_stock <= 0" class="sold-out-overlay">
-              <span class="sold-out-text">已售完</span>
+              <span class="sold-out-text">{{ t('product.sold_out') }}</span>
             </div>
           </div>
 
@@ -54,14 +54,14 @@
         <div class="product-info">
           <!-- Category Tag -->
           <span class="cat-tag">
-            {{ CATEGORY_ZH_MAP[product.jellycat_category] || product.jellycat_category_zh || product.jellycat_category }}
+            {{ t('categories.' + product.jellycat_category, product.jellycat_category_zh || product.jellycat_category) }}
           </span>
 
           <!-- Product Name -->
           <h1 class="product-name">{{ product.product_name }}</h1>
 
           <!-- Sold Count -->
-          <p class="sold-sub">已售出 {{ product.sold_qty ?? 0 }} 件</p>
+          <p class="sold-sub">{{ t('product.sold_count', { n: product.sold_qty ?? 0 }) }}</p>
 
           <div class="divider"></div>
 
@@ -70,25 +70,25 @@
             <span class="price" v-if="product.store_price != null">
               NT$ {{ formatPrice(product.store_price) }}
             </span>
-            <span class="price price-consult" v-else>價格洽詢</span>
+            <span class="price price-consult" v-else>{{ t('product.price_query') }}</span>
           </div>
 
           <!-- Stock Status -->
           <div class="stock-status">
             <span v-if="product.current_stock > 2" class="stock-badge stock-ok">
-              ✓ 有庫存（{{ product.current_stock }} 件）
+              ✓ {{ t('product.in_stock_n', { n: product.current_stock }) }}
             </span>
             <span v-else-if="product.current_stock > 0" class="stock-badge stock-low">
-              ⚠ 剩餘 {{ product.current_stock }} 件
+              ⚠ {{ t('product.low_stock', { n: product.current_stock }) }}
             </span>
             <span v-else class="stock-badge stock-none">
-              ✕ 已售完
+              ✕ {{ t('product.sold_out') }}
             </span>
           </div>
 
           <!-- Qty Selector -->
           <div class="qty-row">
-            <span class="qty-label">數量</span>
+            <span class="qty-label">{{ t('product.qty') }}</span>
             <div class="qty-controls" :class="{ disabled: product.current_stock <= 0 }">
               <button class="qty-btn" @click="decQty" :disabled="qty <= 1 || product.current_stock <= 0">−</button>
               <input
@@ -110,12 +110,12 @@
               class="cta-btn cta-outline"
               :disabled="product.current_stock <= 0"
               @click="addToCartOnly"
-            >加入購物車</button>
+            >{{ t('product.add_cart') }}</button>
             <button
               class="cta-btn cta-solid"
               :disabled="product.current_stock <= 0"
               @click="buyNow"
-            >立即購買</button>
+            >{{ t('product.buy_now') }}</button>
           </div>
 
           <div class="divider"></div>
@@ -123,23 +123,23 @@
           <!-- Product Info Accordion -->
           <div class="accordion-section">
             <button class="accordion-header" @click="infoOpen = !infoOpen">
-              <span>商品資訊</span>
+              <span>{{ t('product.info') }}</span>
               <span class="accordion-icon">{{ infoOpen ? '▲' : '▼' }}</span>
             </button>
             <div v-show="infoOpen" class="accordion-body">
               <div class="info-row">
-                <span class="info-label">分類</span>
+                <span class="info-label">{{ t('product.category') }}</span>
                 <span class="info-value">
-                  {{ CATEGORY_ZH_MAP[product.jellycat_category] || product.jellycat_category_zh || product.jellycat_category }}
+                  {{ t('categories.' + product.jellycat_category, product.jellycat_category_zh || product.jellycat_category) }}
                 </span>
               </div>
               <div class="info-row" v-if="product.box_label">
-                <span class="info-label">包裝</span>
+                <span class="info-label">{{ t('product.box') }}</span>
                 <span class="info-value">{{ product.box_label }}</span>
               </div>
               <div class="info-row">
-                <span class="info-label">備註</span>
-                <span class="info-value">本商品為正版 Jellycat 授權商品</span>
+                <span class="info-label">{{ t('product.info') }}</span>
+                <span class="info-value">{{ t('product.authentic') }}</span>
               </div>
             </div>
           </div>
@@ -147,18 +147,14 @@
           <!-- Points Info -->
           <div class="points-section">
             <span class="points-icon">⭐</span>
-            <span class="points-text">
-              購買本商品可獲得
-              <strong class="points-value">{{ qty }} 點</strong>
-              集點回饋
-            </span>
+            <span class="points-text">{{ t('product.earn_points', { n: qty }) }}</span>
           </div>
         </div>
       </div>
 
       <!-- Related Products -->
       <div class="related-section" v-if="relatedProducts.length > 0">
-        <h2 class="related-title">你可能也喜歡</h2>
+        <h2 class="related-title">{{ t('product.related') }}</h2>
         <div class="related-scroll">
           <div
             v-for="rel in relatedProducts"
@@ -171,14 +167,14 @@
               :style="{ background: getGradient(rel.jellycat_category) }"
             >
               <span class="related-emoji">{{ getEmoji(rel.jellycat_category) }}</span>
-              <div v-if="rel.current_stock <= 0" class="related-sold-out">已售完</div>
+              <div v-if="rel.current_stock <= 0" class="related-sold-out">{{ t('product.sold_out') }}</div>
             </div>
             <div class="related-body">
               <p class="related-name">{{ rel.product_name }}</p>
               <p class="related-price" v-if="rel.store_price != null">
                 NT$ {{ formatPrice(rel.store_price) }}
               </p>
-              <p class="related-price" v-else>洽詢</p>
+              <p class="related-price" v-else>{{ t('product.price_query') }}</p>
             </div>
           </div>
         </div>
@@ -190,8 +186,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAppDataStore } from '@/stores/appData'
 import { useCartStore } from '@/stores/cart'
+
+const { t } = useI18n()
 
 const route  = useRoute()
 const router = useRouter()
@@ -217,21 +216,6 @@ const EMOJI_MAP = {
   Horses:    '🐴',
   Fish:      '🐟',
   default:   '🧸',
-}
-
-const CATEGORY_ZH_MAP = {
-  Bunnies:   '兔子',
-  Bears:     '熊熊',
-  Dogs:      '狗狗',
-  Cats:      '貓咪',
-  Birds:     '鳥類',
-  Dinosaurs: '恐龍',
-  Horses:    '馬兒',
-  Fish:      '魚魚',
-  Foxes:     '狐狸',
-  Elephants: '大象',
-  Dragons:   '龍龍',
-  default:   '其他',
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -308,7 +292,7 @@ const buyNow = () => {
 .not-found-title { font-size: 24px; font-weight: 800; color: var(--jj-text); margin: 0; }
 .not-found-sub   { font-size: 15px; color: var(--jj-text-sub); margin: 0; }
 .back-btn {
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
   color: white;
   border: none;
   border-radius: 999px;
@@ -319,7 +303,7 @@ const buyNow = () => {
   transition: background 0.15s;
   margin-top: 8px;
 }
-.back-btn:hover { background: var(--jj-pink); }
+.back-btn:hover { background: var(--jj-rose); }
 
 /* ── Breadcrumb ─────────────────────────────────────────────────────────── */
 .breadcrumb {
@@ -331,7 +315,7 @@ const buyNow = () => {
   margin-bottom: 24px;
 }
 .breadcrumb a {
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
   text-decoration: none;
 }
 .breadcrumb a:hover { text-decoration: underline; }
@@ -406,7 +390,7 @@ const buyNow = () => {
   flex-shrink: 0;
 }
 .thumb:hover     { transform: translateY(-2px); }
-.thumb-active    { border-color: var(--jj-pink-dark); }
+.thumb-active    { border-color: var(--jj-rose-dark); }
 .thumb-emoji     { font-size: 36px; user-select: none; }
 
 /* ── Product Info ───────────────────────────────────────────────────────── */
@@ -418,8 +402,8 @@ const buyNow = () => {
 
 .cat-tag {
   display: inline-block;
-  background: var(--jj-pink-light);
-  color: var(--jj-pink-dark);
+  background: var(--jj-rose-light);
+  color: var(--jj-rose-dark);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
@@ -452,7 +436,7 @@ const buyNow = () => {
 .price {
   font-size: 2rem;
   font-weight: 800;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
 }
 .price-consult { color: var(--jj-text-sub); font-size: 1.4rem; }
 
@@ -489,7 +473,7 @@ const buyNow = () => {
 .qty-btn {
   width: 36px;
   height: 36px;
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   border: none;
   font-size: 18px;
   font-weight: 500;
@@ -500,7 +484,7 @@ const buyNow = () => {
   justify-content: center;
   transition: background 0.15s;
 }
-.qty-btn:hover:not(:disabled) { background: var(--jj-pink-pale); }
+.qty-btn:hover:not(:disabled) { background: var(--jj-rose-pale); }
 .qty-btn:disabled { cursor: not-allowed; color: #d1d5db; }
 .qty-input {
   width: 48px;
@@ -538,20 +522,20 @@ const buyNow = () => {
 }
 .cta-outline {
   background: transparent;
-  border: 2px solid var(--jj-pink-dark);
-  color: var(--jj-pink-dark);
+  border: 2px solid var(--jj-rose-dark);
+  color: var(--jj-rose-dark);
 }
 .cta-outline:hover:not(:disabled) {
-  background: var(--jj-pink-pale);
+  background: var(--jj-rose-pale);
 }
 .cta-solid {
-  background: var(--jj-pink-dark);
-  border: 2px solid var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
+  border: 2px solid var(--jj-rose-dark);
   color: white;
 }
 .cta-solid:hover:not(:disabled) {
-  background: var(--jj-pink);
-  border-color: var(--jj-pink);
+  background: var(--jj-rose);
+  border-color: var(--jj-rose);
 }
 
 /* ── Accordion ──────────────────────────────────────────────────────────── */
@@ -565,7 +549,7 @@ const buyNow = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   border: none;
   padding: 14px 16px;
   font-size: 14px;
@@ -574,7 +558,7 @@ const buyNow = () => {
   cursor: pointer;
   text-align: left;
 }
-.accordion-header:hover { background: var(--jj-pink-pale); }
+.accordion-header:hover { background: var(--jj-rose-pale); }
 .accordion-icon { font-size: 11px; color: var(--jj-text-sub); }
 .accordion-body {
   padding: 12px 16px;
@@ -596,13 +580,13 @@ const buyNow = () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--jj-pink-pale);
+  background: var(--jj-rose-pale);
   border-radius: 12px;
   padding: 12px 16px;
 }
 .points-icon { font-size: 20px; }
 .points-text { font-size: 13px; color: var(--jj-text); }
-.points-value { color: var(--jj-pink-dark); font-size: 16px; }
+.points-value { color: var(--jj-rose-dark); font-size: 16px; }
 
 /* ── Related Products ───────────────────────────────────────────────────── */
 .related-section { margin-top: 8px; }
@@ -618,11 +602,11 @@ const buyNow = () => {
   overflow-x: auto;
   padding-bottom: 8px;
   scrollbar-width: thin;
-  scrollbar-color: var(--jj-pink-light) transparent;
+  scrollbar-color: var(--jj-rose-light) transparent;
 }
 .related-scroll::-webkit-scrollbar { height: 4px; }
 .related-scroll::-webkit-scrollbar-track { background: transparent; }
-.related-scroll::-webkit-scrollbar-thumb { background: var(--jj-pink-light); border-radius: 999px; }
+.related-scroll::-webkit-scrollbar-thumb { background: var(--jj-rose-light); border-radius: 999px; }
 
 .related-card {
   min-width: 200px;
@@ -674,7 +658,7 @@ const buyNow = () => {
 .related-price {
   font-size: 13px;
   font-weight: 700;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
   margin: 0;
 }
 

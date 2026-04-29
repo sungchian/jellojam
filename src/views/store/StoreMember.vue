@@ -4,14 +4,14 @@
     <!-- ── Not logged in ── -->
     <div v-if="!memberStore.isLoggedIn" class="login-card">
       <div class="login-avatar">🐰</div>
-      <h2 class="login-title">會員登入</h2>
-      <p class="login-sub">輸入您的姓名或 LINE ID 即可查詢會員資料</p>
+      <h2 class="login-title">{{ t('member.login_title') }}</h2>
+      <p class="login-sub">{{ t('member.login_sub') }}</p>
 
       <input
         v-model="loginInput"
         class="login-input"
         type="text"
-        placeholder="姓名 / LINE ID"
+        :placeholder="t('member.login_ph')"
         @keydown.enter="doLogin"
       />
 
@@ -22,10 +22,10 @@
         @click="doLogin"
         :disabled="loginLoading"
       >
-        {{ loginLoading ? '查詢中…' : '登入' }}
+        {{ loginLoading ? t('member.query_fail') : t('member.login_btn') }}
       </button>
 
-      <p class="login-note">尚未加入？透過 LINE 官方帳號與我們聯繫 💬</p>
+      <p class="login-note">{{ t('member.login_note') }}</p>
     </div>
 
     <!-- ── Logged in ── -->
@@ -41,24 +41,23 @@
         >
           {{ currentTier.name }}
         </span>
-        <button class="logout-btn" @click="memberStore.logout()">登出</button>
+        <button class="logout-btn" @click="memberStore.logout()">{{ t('member.logout') }}</button>
       </div>
 
       <!-- Points card -->
       <div class="points-card">
         <div class="points-left">
-          <div class="points-label">可用點數</div>
+          <div class="points-label">{{ t('member.points_avail') }}</div>
           <div class="points-value">{{ currentPoints }}</div>
-          <div class="points-lifetime">累積點數：{{ lifetimePoints }}</div>
+          <div class="points-lifetime">{{ t('member.points_life') }}：{{ lifetimePoints }}</div>
         </div>
         <div class="points-right">
           <div v-if="nextTier" class="tier-progress-label">
-            再 <strong>{{ Math.max(0, nextTier.minPoints - lifetimePoints) }}</strong> 點升級
-            <span>{{ nextTier.name }}</span>
+            {{ t('member.next_tier', { n: Math.max(0, nextTier.minPoints - lifetimePoints), tier: nextTier.name }) }}
             <span v-if="nextTier.minPoints >= 15">{{ nextTier.minPoints >= 30 ? '💎' : '🥇' }}</span>
           </div>
           <div v-else class="tier-progress-label">
-            已達最高等級 💎
+            {{ t('member.max_tier') }} 💎
           </div>
           <div class="progress-track">
             <div
@@ -74,7 +73,7 @@
       </div>
 
       <!-- Tier benefits -->
-      <div class="section-heading">會員等級說明</div>
+      <div class="section-heading">{{ t('member.tier_title') }}</div>
       <div class="tier-list">
         <div
           v-for="tier in MEMBER_TIERS"
@@ -92,20 +91,20 @@
           </div>
           <div class="tier-card-min">{{ tier.minPoints }}+ 點</div>
           <div class="tier-card-benefit">
-            <template v-if="tier.minPoints === 0">基本會員服務</template>
-            <template v-else-if="tier.minPoints === 5">專屬優先通知</template>
-            <template v-else-if="tier.minPoints === 15">限量商品優先購</template>
-            <template v-else>尊榮禮遇 + 生日驚喜</template>
+            <template v-if="tier.minPoints === 0">{{ t('member.benefit_normal') }}</template>
+            <template v-else-if="tier.minPoints === 5">{{ t('member.benefit_silver') }}</template>
+            <template v-else-if="tier.minPoints === 15">{{ t('member.benefit_gold') }}</template>
+            <template v-else>{{ t('member.benefit_plat') }}</template>
           </div>
-          <div v-if="tier.name === currentTier.name" class="tier-current-badge">目前等級</div>
+          <div v-if="tier.name === currentTier.name" class="tier-current-badge">{{ t('member.tier_benefits') }}</div>
         </div>
       </div>
 
       <!-- Order history -->
       <div class="orders-section">
-        <div class="section-heading">我的訂單</div>
+        <div class="section-heading">{{ t('member.orders_title') }}</div>
         <div v-if="myOrders.length === 0" class="no-orders">
-          目前沒有訂單記錄
+          {{ t('member.no_orders') }}
         </div>
         <div v-else class="orders-list">
           <div
@@ -114,7 +113,7 @@
             class="order-card"
           >
             <div class="order-header">
-              <span class="order-no">{{ order.order_no || order.order_id }}</span>
+              <span class="order-no">{{ t('member.order_no') }}{{ order.order_no || order.order_id }}</span>
               <span
                 class="order-status"
                 :style="{
@@ -126,11 +125,11 @@
               </span>
             </div>
             <div class="order-meta">
-              <span class="order-date">{{ order.sales_date }}</span>
+              <span class="order-date">{{ t('member.order_date') }}{{ order.sales_date }}</span>
             </div>
             <div class="order-products">{{ order.product_name }}</div>
             <div class="order-total" v-if="order.selling_price">
-              NT${{ Number(order.selling_price).toLocaleString() }}
+              {{ t('member.order_amount') }} NT${{ Number(order.selling_price).toLocaleString() }}
             </div>
           </div>
         </div>
@@ -142,9 +141,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useStoreMemberStore } from '@/stores/storeMember'
 import { useAppDataStore, MEMBER_TIERS, ORDER_STATUSES, getTierByPoints } from '@/stores/appData'
 
+const { t } = useI18n()
 const memberStore = useStoreMemberStore()
 const appData = useAppDataStore()
 
@@ -160,7 +161,7 @@ async function doLogin() {
     await memberStore.loginByName(loginInput.value)
     loginInput.value = ''
   } catch (err) {
-    loginError.value = err.message || '登入失敗，請再試一次'
+    loginError.value = err.message || t('member.query_fail')
   } finally {
     loginLoading.value = false
   }
@@ -270,7 +271,7 @@ const tierProgress = computed(() => {
   border-radius: 10px;
   font-size: 15px;
   color: var(--jj-text);
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   margin-bottom: 12px;
   box-sizing: border-box;
   outline: none;
@@ -278,7 +279,7 @@ const tierProgress = computed(() => {
 }
 
 .login-input:focus {
-  border-color: var(--jj-pink);
+  border-color: var(--jj-rose);
   background: var(--jj-white);
 }
 
@@ -294,7 +295,7 @@ const tierProgress = computed(() => {
 .login-btn {
   width: 100%;
   height: 48px;
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
   color: #fff;
   border: none;
   border-radius: 999px;
@@ -306,7 +307,7 @@ const tierProgress = computed(() => {
 }
 
 .login-btn:hover:not(:disabled) {
-  background: var(--jj-pink);
+  background: var(--jj-rose);
 }
 
 .login-btn:disabled {
@@ -337,7 +338,7 @@ const tierProgress = computed(() => {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--jj-pink) 0%, var(--jj-pink-dark) 100%);
+  background: linear-gradient(135deg, var(--jj-rose) 0%, var(--jj-rose-dark) 100%);
   color: #fff;
   font-size: 32px;
   font-weight: 800;
@@ -374,13 +375,13 @@ const tierProgress = computed(() => {
 }
 
 .logout-btn:hover {
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   color: var(--jj-text);
 }
 
 /* ── Points card ──────────────────────────────── */
 .points-card {
-  background: linear-gradient(135deg, var(--jj-pink) 0%, var(--jj-purple) 100%);
+  background: linear-gradient(135deg, var(--jj-rose) 0%, var(--jj-plum) 100%);
   color: #fff;
   border-radius: 20px;
   padding: 28px;
@@ -501,7 +502,7 @@ const tierProgress = computed(() => {
   top: -10px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--jj-pink);
+  background: var(--jj-rose);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -587,7 +588,7 @@ const tierProgress = computed(() => {
 .order-total {
   font-size: 15px;
   font-weight: 700;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
 }
 
 /* ── Responsive ───────────────────────────────── */

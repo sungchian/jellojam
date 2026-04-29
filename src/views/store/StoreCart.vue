@@ -2,16 +2,16 @@
   <div class="cart-page">
     <!-- Page header -->
     <div class="page-header">
-      <h1 class="page-title">🛒 購物車</h1>
-      <span v-if="cart.itemCount > 0" class="item-badge">{{ cart.itemCount }} 件</span>
+      <h1 class="page-title">🛒 {{ t('cart.title') }}</h1>
+      <span v-if="cart.itemCount > 0" class="item-badge">{{ t('cart.items_total', { n: cart.itemCount }) }}</span>
     </div>
 
     <!-- Empty state -->
     <div v-if="cart.itemCount === 0" class="empty-cart">
       <div class="empty-icon">🛒</div>
-      <p class="empty-text">購物車是空的</p>
-      <p class="empty-sub">快去挑選您喜歡的 Jellycat 吧！</p>
-      <RouterLink to="/store/catalog" class="btn-continue">繼續購物</RouterLink>
+      <p class="empty-text">{{ t('cart.empty') }}</p>
+      <p class="empty-sub">{{ t('cart.empty_sub') }}</p>
+      <RouterLink to="/store/catalog" class="btn-continue">{{ t('cart.go_shop') }}</RouterLink>
     </div>
 
     <!-- Cart layout -->
@@ -37,7 +37,7 @@
 
             <!-- Unit price -->
             <div class="item-price">
-              <span class="price-label">單價</span>
+              <span class="price-label">{{ t('cart.unit_price') }}</span>
               <span class="price-value">NT${{ item.price.toLocaleString() }}</span>
             </div>
 
@@ -69,29 +69,29 @@
             </div>
 
             <!-- Remove -->
-            <button class="item-remove" @click="removeItem(item.id)" title="移除">×</button>
+            <button class="item-remove" @click="removeItem(item.id)" :title="t('cart.remove')">×</button>
           </div>
         </div>
 
         <div class="cart-divider"></div>
         <div class="cart-footer-link">
-          <RouterLink to="/store/catalog" class="link-continue">← 繼續購物</RouterLink>
+          <RouterLink to="/store/catalog" class="link-continue">← {{ t('cart.go_shop') }}</RouterLink>
         </div>
       </div>
 
       <!-- Right: order summary -->
       <div class="cart-summary">
-        <h2 class="summary-title">訂單摘要</h2>
+        <h2 class="summary-title">{{ t('cart.summary') }}</h2>
 
         <div class="summary-rows">
           <div class="summary-row">
-            <span>商品小計</span>
+            <span>{{ t('cart.items_total') }}</span>
             <span>NT${{ cart.subtotal.toLocaleString() }}</span>
           </div>
           <div class="summary-row">
-            <span>運費</span>
+            <span>{{ t('cart.shipping') }}</span>
             <span :class="{ 'free-shipping': shipping === 0 }">
-              {{ shipping === 0 ? '免運費' : 'NT$60' }}
+              {{ shipping === 0 ? t('cart.free_ship') : 'NT$60' }}
             </span>
           </div>
         </div>
@@ -99,16 +99,16 @@
         <div class="summary-divider"></div>
 
         <div class="summary-total">
-          <span>總計</span>
+          <span>{{ t('cart.total') }}</span>
           <span class="total-amount">NT${{ total.toLocaleString() }}</span>
         </div>
 
-        <button class="btn-checkout" @click="goCheckout">前往結帳</button>
+        <button class="btn-checkout" @click="goCheckout">{{ t('cart.checkout') }}</button>
 
-        <p class="promo-note">消費滿 NT$1,500 免運費 🎉</p>
+        <p class="promo-note">{{ t('cart.free_ship_note') }} 🎉</p>
 
         <p v-if="memberStore.isLoggedIn" class="points-note">
-          本次可獲得 <strong>{{ earnPoints }}</strong> 點
+          {{ t('cart.earn_note', { n: earnPoints }) }}
         </p>
       </div>
     </div>
@@ -118,8 +118,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useCartStore } from '@/stores/cart'
 import { useStoreMemberStore } from '@/stores/storeMember'
+
+const { t } = useI18n()
 
 const cart = useCartStore()
 const memberStore = useStoreMemberStore()
@@ -164,7 +167,7 @@ function goCheckout() {
 }
 
 .item-badge {
-  background: var(--jj-pink);
+  background: var(--jj-rose);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -203,7 +206,7 @@ function goCheckout() {
 .btn-continue {
   display: inline-block;
   padding: 12px 32px;
-  background: var(--jj-pink);
+  background: var(--jj-rose);
   color: #fff;
   border-radius: 999px;
   font-size: 15px;
@@ -213,7 +216,7 @@ function goCheckout() {
 }
 
 .btn-continue:hover {
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
 }
 
 /* ── Cart layout ─────────────────────────────── */
@@ -253,14 +256,14 @@ function goCheckout() {
 }
 
 .cart-item:hover {
-  background: var(--jj-pink-pale);
+  background: var(--jj-rose-pale);
 }
 
 .item-thumb {
   width: 60px;
   height: 60px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--jj-pink-light) 0%, var(--jj-pink-pale) 100%);
+  background: linear-gradient(135deg, var(--jj-rose-light) 0%, var(--jj-rose-pale) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,8 +293,8 @@ function goCheckout() {
   margin-top: 4px;
   font-size: 11px;
   padding: 1px 8px;
-  background: var(--jj-pink-pale);
-  color: var(--jj-pink-dark);
+  background: var(--jj-rose-pale);
+  color: var(--jj-rose-dark);
   border-radius: 999px;
 }
 
@@ -325,7 +328,7 @@ function goCheckout() {
   height: 28px;
   border: 1.5px solid var(--jj-border);
   border-radius: 8px;
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   color: var(--jj-text);
   font-size: 16px;
   cursor: pointer;
@@ -337,8 +340,8 @@ function goCheckout() {
 }
 
 .qty-btn:hover:not(:disabled) {
-  background: var(--jj-pink-pale);
-  border-color: var(--jj-pink);
+  background: var(--jj-rose-pale);
+  border-color: var(--jj-rose);
 }
 
 .qty-btn:disabled {
@@ -370,7 +373,7 @@ function goCheckout() {
   text-align: right;
   font-size: 15px;
   font-weight: 700;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
 }
 
 /* Remove button */
@@ -407,7 +410,7 @@ function goCheckout() {
 
 .link-continue {
   font-size: 14px;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
   text-decoration: none;
   font-weight: 500;
 }
@@ -473,13 +476,13 @@ function goCheckout() {
 .total-amount {
   font-size: 22px;
   font-weight: 800;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
 }
 
 .btn-checkout {
   width: 100%;
   height: 48px;
-  background: var(--jj-pink);
+  background: var(--jj-rose);
   color: #fff;
   border: none;
   border-radius: 999px;
@@ -491,7 +494,7 @@ function goCheckout() {
 }
 
 .btn-checkout:hover {
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
 }
 
 .promo-note {
@@ -503,7 +506,7 @@ function goCheckout() {
 
 .points-note {
   font-size: 13px;
-  color: var(--jj-purple);
+  color: var(--jj-plum);
   text-align: center;
   background: #f5f3ff;
   border-radius: 8px;

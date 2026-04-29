@@ -3,17 +3,17 @@
     <!-- Page Header Bar -->
     <div class="page-header-bar">
       <div class="breadcrumb">
-        <router-link to="/store">首頁</router-link>
+        <router-link to="/store">{{ t('catalog.title') }}</router-link>
         <span class="sep">/</span>
-        <span>全部商品</span>
+        <span>{{ t('catalog.all') }}</span>
       </div>
       <div class="header-right">
-        <span class="result-count">共 {{ filtered.length }} 件商品</span>
+        <span class="result-count">{{ t('catalog.filter_title') }} {{ filtered.length }}</span>
         <select class="sort-select" v-model="sortKey">
-          <option value="hot">熱銷優先</option>
-          <option value="new">最新上架</option>
-          <option value="price_asc">價格低到高</option>
-          <option value="price_desc">價格高到低</option>
+          <option value="hot">{{ t('catalog.sort_hot') }}</option>
+          <option value="new">{{ t('catalog.sort_new') }}</option>
+          <option value="price_asc">{{ t('catalog.sort_low') }}</option>
+          <option value="price_desc">{{ t('catalog.sort_high') }}</option>
         </select>
       </div>
     </div>
@@ -26,10 +26,10 @@
           <line x1="8" y1="12" x2="20" y2="12"/>
           <line x1="12" y1="18" x2="20" y2="18"/>
         </svg>
-        篩選條件
+        {{ t('catalog.filter') }}
         <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
       </button>
-      <span class="result-count-mobile">{{ filtered.length }} 件</span>
+      <span class="result-count-mobile">{{ filtered.length }}</span>
     </div>
 
     <!-- Main Layout -->
@@ -37,12 +37,12 @@
       <!-- Sidebar -->
       <aside class="catalog-sidebar">
         <div class="sidebar-section">
-          <div class="sidebar-title">商品分類</div>
+          <div class="sidebar-title">{{ t('catalog.category') }}</div>
           <button
             class="cat-btn"
             :class="{ active: filterCat === '' }"
             @click="filterCat = ''; page = 1"
-          >全部</button>
+          >{{ t('catalog.all') }}</button>
           <button
             v-for="cat in allCategories"
             :key="cat"
@@ -50,28 +50,28 @@
             :class="{ active: filterCat === cat }"
             @click="filterCat = cat; page = 1"
           >
-            {{ EMOJI_MAP[cat] || EMOJI_MAP.default }} {{ CATEGORY_ZH_MAP[cat] || cat }}
+            {{ EMOJI_MAP[cat] || EMOJI_MAP.default }} {{ t('categories.' + cat, cat) }}
           </button>
         </div>
 
         <div class="sidebar-section">
-          <div class="sidebar-title">庫存狀態</div>
+          <div class="sidebar-title">{{ t('catalog.stock') }}</div>
           <label class="radio-label">
-            <input type="radio" v-model="filterStock" value="all" @change="page = 1" /> 全部
+            <input type="radio" v-model="filterStock" value="all" @change="page = 1" /> {{ t('catalog.all_stock') }}
           </label>
           <label class="radio-label">
-            <input type="radio" v-model="filterStock" value="in_stock" @change="page = 1" /> 有庫存
+            <input type="radio" v-model="filterStock" value="in_stock" @change="page = 1" /> {{ t('catalog.in_stock') }}
           </label>
         </div>
 
         <div class="sidebar-section">
-          <div class="sidebar-title">價格區間</div>
+          <div class="sidebar-title">{{ t('catalog.price_range') }}</div>
           <div class="price-inputs">
             <input
               type="number"
               class="price-input"
               v-model.number="priceMinDraft"
-              placeholder="最低"
+              :placeholder="t('catalog.price_min')"
               min="0"
             />
             <span class="price-dash">—</span>
@@ -79,30 +79,30 @@
               type="number"
               class="price-input"
               v-model.number="priceMaxDraft"
-              placeholder="最高"
+              :placeholder="t('catalog.price_max')"
               min="0"
             />
           </div>
-          <button class="apply-price-btn" @click="applyPrice">套用</button>
+          <button class="apply-price-btn" @click="applyPrice">{{ t('catalog.apply') }}</button>
         </div>
 
-        <button class="clear-all-btn" @click="clearFilters">清除所有篩選</button>
+        <button class="clear-all-btn" @click="clearFilters">{{ t('catalog.clear') }}</button>
       </aside>
 
       <!-- Product Grid -->
       <main class="catalog-main">
         <!-- Search bar (if searchQ active) -->
         <div v-if="searchQ" class="search-info">
-          搜尋「<strong>{{ searchQ }}</strong>」的結果
+          {{ t('catalog.price_query') }}「<strong>{{ searchQ }}</strong>」
           <button class="clear-search-btn" @click="searchQ = ''; page = 1">✕</button>
         </div>
 
         <!-- Empty State -->
         <div v-if="paginated.length === 0" class="empty-state">
           <div class="empty-illustration">🔍</div>
-          <p class="empty-title">找不到相關商品</p>
-          <p class="empty-sub">試試調整篩選條件或搜尋其他關鍵字</p>
-          <button class="clear-all-btn" @click="clearFilters">清除篩選</button>
+          <p class="empty-title">{{ t('catalog.no_result') }}</p>
+          <p class="empty-sub">{{ t('catalog.no_result_sub') }}</p>
+          <button class="clear-all-btn" @click="clearFilters">{{ t('catalog.clear') }}</button>
         </div>
 
         <div v-else>
@@ -123,10 +123,10 @@
                 <span
                   v-if="product.current_stock > 0 && product.current_stock <= 2"
                   class="low-stock-chip"
-                >即將售完</span>
+                >{{ t('catalog.almost_gone') }}</span>
                 <!-- Sold out overlay -->
                 <div v-if="product.current_stock <= 0" class="sold-out-overlay">
-                  <span class="sold-out-text">已售完</span>
+                  <span class="sold-out-text">{{ t('catalog.sold_out') }}</span>
                 </div>
               </div>
 
@@ -134,13 +134,13 @@
               <div class="card-body">
                 <p class="card-name">{{ product.product_name }}</p>
                 <span class="cat-tag">
-                  {{ CATEGORY_ZH_MAP[product.jellycat_category] || product.jellycat_category_zh || product.jellycat_category }}
+                  {{ t('categories.' + product.jellycat_category, product.jellycat_category_zh || product.jellycat_category) }}
                 </span>
                 <div class="price-row">
                   <span class="card-price">
                     NT$ {{ formatPrice(product.store_price) }}
                   </span>
-                  <span class="sold-count">已售 {{ product.sold_qty ?? 0 }}</span>
+                  <span class="sold-count">{{ t('catalog.sold_count', { n: product.sold_qty ?? 0 }) }}</span>
                 </div>
               </div>
 
@@ -151,7 +151,7 @@
                   :disabled="product.current_stock <= 0"
                   @click.stop="addToCart(product)"
                 >
-                  {{ product.current_stock <= 0 ? '已售完' : '加入購物車' }}
+                  {{ product.current_stock <= 0 ? t('catalog.sold_out') : t('catalog.add_cart') }}
                 </button>
               </div>
             </div>
@@ -163,7 +163,7 @@
               class="page-btn"
               :disabled="page === 1"
               @click="page--"
-            >‹ 上一頁</button>
+            >‹ {{ t('catalog.prev') }}</button>
             <button
               v-for="p in pageNumbers"
               :key="p"
@@ -176,7 +176,7 @@
               class="page-btn"
               :disabled="page === totalPages"
               @click="page++"
-            >下一頁 ›</button>
+            >{{ t('catalog.next') }} ›</button>
           </div>
         </div>
       </main>
@@ -187,18 +187,18 @@
       <div v-if="mobileSheetOpen" class="sheet-backdrop" @click.self="mobileSheetOpen = false">
         <div class="mobile-sheet">
           <div class="sheet-header">
-            <span class="sheet-title">篩選條件</span>
+            <span class="sheet-title">{{ t('catalog.filter_title') }}</span>
             <button class="sheet-close" @click="mobileSheetOpen = false">✕</button>
           </div>
 
           <div class="sidebar-section">
-            <div class="sidebar-title">商品分類</div>
+            <div class="sidebar-title">{{ t('catalog.category') }}</div>
             <div class="cat-grid">
               <button
                 class="cat-btn"
                 :class="{ active: filterCat === '' }"
                 @click="filterCat = ''; page = 1"
-              >全部</button>
+              >{{ t('catalog.all') }}</button>
               <button
                 v-for="cat in allCategories"
                 :key="cat"
@@ -206,34 +206,34 @@
                 :class="{ active: filterCat === cat }"
                 @click="filterCat = cat; page = 1"
               >
-                {{ EMOJI_MAP[cat] || EMOJI_MAP.default }} {{ CATEGORY_ZH_MAP[cat] || cat }}
+                {{ EMOJI_MAP[cat] || EMOJI_MAP.default }} {{ t('categories.' + cat, cat) }}
               </button>
             </div>
           </div>
 
           <div class="sidebar-section">
-            <div class="sidebar-title">庫存狀態</div>
+            <div class="sidebar-title">{{ t('catalog.stock') }}</div>
             <label class="radio-label">
-              <input type="radio" v-model="filterStock" value="all" @change="page = 1" /> 全部
+              <input type="radio" v-model="filterStock" value="all" @change="page = 1" /> {{ t('catalog.all_stock') }}
             </label>
             <label class="radio-label">
-              <input type="radio" v-model="filterStock" value="in_stock" @change="page = 1" /> 有庫存
+              <input type="radio" v-model="filterStock" value="in_stock" @change="page = 1" /> {{ t('catalog.in_stock') }}
             </label>
           </div>
 
           <div class="sidebar-section">
-            <div class="sidebar-title">價格區間</div>
+            <div class="sidebar-title">{{ t('catalog.price_range') }}</div>
             <div class="price-inputs">
-              <input type="number" class="price-input" v-model.number="priceMinDraft" placeholder="最低" min="0" />
+              <input type="number" class="price-input" v-model.number="priceMinDraft" :placeholder="t('catalog.price_min')" min="0" />
               <span class="price-dash">—</span>
-              <input type="number" class="price-input" v-model.number="priceMaxDraft" placeholder="最高" min="0" />
+              <input type="number" class="price-input" v-model.number="priceMaxDraft" :placeholder="t('catalog.price_max')" min="0" />
             </div>
-            <button class="apply-price-btn" @click="applyPrice">套用</button>
+            <button class="apply-price-btn" @click="applyPrice">{{ t('catalog.apply') }}</button>
           </div>
 
           <div class="sheet-footer">
-            <button class="clear-all-btn" @click="clearFilters; mobileSheetOpen = false">清除篩選</button>
-            <button class="confirm-btn" @click="mobileSheetOpen = false">確認</button>
+            <button class="clear-all-btn" @click="clearFilters; mobileSheetOpen = false">{{ t('catalog.clear') }}</button>
+            <button class="confirm-btn" @click="mobileSheetOpen = false">{{ t('catalog.apply') }}</button>
           </div>
         </div>
       </div>
@@ -244,8 +244,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAppDataStore } from '@/stores/appData'
 import { useCartStore } from '@/stores/cart'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -275,21 +278,6 @@ const EMOJI_MAP = {
   default:   '🧸',
 }
 
-const CATEGORY_ZH_MAP = {
-  Bunnies:   '兔子',
-  Bears:     '熊熊',
-  Dogs:      '狗狗',
-  Cats:      '貓咪',
-  Birds:     '鳥類',
-  Dinosaurs: '恐龍',
-  Horses:    '馬兒',
-  Fish:      '魚魚',
-  Foxes:     '狐狸',
-  Elephants: '大象',
-  Dragons:   '龍龍',
-  default:   '其他',
-}
-
 // ── Reactive State ─────────────────────────────────────────────────────────
 const filterCat   = ref(route.query.cat || '')
 const filterStock = ref('all')
@@ -315,7 +303,7 @@ const getGradient = (cat) => GRAD_MAP[cat] || GRAD_MAP.default
 const getEmoji    = (cat) => EMOJI_MAP[cat] || EMOJI_MAP.default
 
 const formatPrice = (price) => {
-  if (price == null) return '洽詢'
+  if (price == null) return t('catalog.price_query')
   return Number(price).toLocaleString('zh-TW')
 }
 
@@ -448,7 +436,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   color: var(--jj-text-sub);
 }
 .breadcrumb a {
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
   text-decoration: none;
 }
 .breadcrumb a:hover { text-decoration: underline; }
@@ -476,7 +464,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   outline: none;
 }
 .sort-select:focus {
-  border-color: var(--jj-pink);
+  border-color: var(--jj-rose);
 }
 
 /* ── Catalog Layout ─────────────────────────────────────────────────────── */
@@ -535,12 +523,12 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   transition: background 0.15s, color 0.15s;
 }
 .cat-btn:hover {
-  background: var(--jj-pink-pale);
-  color: var(--jj-pink-dark);
+  background: var(--jj-rose-pale);
+  color: var(--jj-rose-dark);
 }
 .cat-btn.active {
-  background: var(--jj-pink-light);
-  color: var(--jj-pink-dark);
+  background: var(--jj-rose-light);
+  color: var(--jj-rose-dark);
   font-weight: 600;
 }
 
@@ -554,7 +542,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   padding: 4px 0;
 }
 .radio-label input[type="radio"] {
-  accent-color: var(--jj-pink-dark);
+  accent-color: var(--jj-rose-dark);
 }
 
 .price-inputs {
@@ -573,13 +561,13 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   outline: none;
   color: var(--jj-text);
 }
-.price-input:focus { border-color: var(--jj-pink); }
+.price-input:focus { border-color: var(--jj-rose); }
 .price-dash { font-size: 13px; color: var(--jj-text-sub); }
 
 .apply-price-btn {
   width: 100%;
-  background: var(--jj-pink-light);
-  color: var(--jj-pink-dark);
+  background: var(--jj-rose-light);
+  color: var(--jj-rose-dark);
   border: none;
   border-radius: 8px;
   padding: 7px;
@@ -588,7 +576,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   cursor: pointer;
   transition: background 0.15s;
 }
-.apply-price-btn:hover { background: var(--jj-pink); color: var(--jj-white); }
+.apply-price-btn:hover { background: var(--jj-rose); color: var(--jj-white); }
 
 .clear-all-btn {
   background: none;
@@ -601,7 +589,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   transition: border-color 0.15s, color 0.15s;
   width: 100%;
 }
-.clear-all-btn:hover { border-color: var(--jj-pink); color: var(--jj-pink-dark); }
+.clear-all-btn:hover { border-color: var(--jj-rose); color: var(--jj-rose-dark); }
 
 /* ── Mobile Filter Bar ──────────────────────────────────────────────────── */
 .mobile-filter-bar {
@@ -626,7 +614,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   font-weight: 500;
 }
 .filter-badge {
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
   color: white;
   border-radius: 999px;
   font-size: 11px;
@@ -648,12 +636,12 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   gap: 8px;
 }
 .clear-search-btn {
-  background: var(--jj-pink-pale);
+  background: var(--jj-rose-pale);
   border: none;
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 12px;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
   cursor: pointer;
 }
 
@@ -743,8 +731,8 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
 }
 .cat-tag {
   display: inline-block;
-  background: var(--jj-pink-light);
-  color: var(--jj-pink-dark);
+  background: var(--jj-rose-light);
+  color: var(--jj-rose-dark);
   border-radius: 999px;
   font-size: 11px;
   padding: 2px 8px;
@@ -760,7 +748,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
 .card-price {
   font-weight: 700;
   font-size: 15px;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
 }
 .sold-count {
   font-size: 11px;
@@ -774,7 +762,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
 }
 .add-cart-btn {
   width: 100%;
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
   color: white;
   border: none;
   border-radius: 999px;
@@ -784,7 +772,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s;
 }
-.add-cart-btn:hover:not(:disabled) { background: var(--jj-pink); }
+.add-cart-btn:hover:not(:disabled) { background: var(--jj-rose); }
 .add-cart-btn:disabled {
   background: #e5e7eb;
   color: #9ca3af;
@@ -826,12 +814,12 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   transition: background 0.15s, border-color 0.15s;
 }
 .page-btn:hover:not(:disabled):not(.ellipsis) {
-  background: var(--jj-pink-pale);
-  border-color: var(--jj-pink);
+  background: var(--jj-rose-pale);
+  border-color: var(--jj-rose);
 }
 .page-btn.active {
-  background: var(--jj-pink-dark);
-  border-color: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
+  border-color: var(--jj-rose-dark);
   color: white;
   font-weight: 700;
 }
@@ -891,7 +879,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
 .sheet-footer .clear-all-btn { flex: 1; }
 .confirm-btn {
   flex: 2;
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
   color: white;
   border: none;
   border-radius: 8px;
@@ -901,7 +889,7 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   cursor: pointer;
   transition: background 0.15s;
 }
-.confirm-btn:hover { background: var(--jj-pink); }
+.confirm-btn:hover { background: var(--jj-rose); }
 
 /* Sheet transitions */
 .sheet-enter-active, .sheet-leave-active {

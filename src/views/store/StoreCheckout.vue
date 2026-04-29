@@ -3,23 +3,23 @@
 
     <!-- Step bar -->
     <div class="step-bar">
-      <span :class="['step', submitted ? 'step-done' : 'step-active']">① 填寫資料</span>
+      <span :class="['step', submitted ? 'step-done' : 'step-active']">① {{ t('checkout.step1') }}</span>
       <span class="step-arrow">→</span>
-      <span :class="['step', submitted ? 'step-done' : '']">② 確認訂單</span>
+      <span :class="['step', submitted ? 'step-done' : '']">② {{ t('checkout.step2') }}</span>
       <span class="step-arrow">→</span>
-      <span :class="['step', submitted ? 'step-active' : '']">③ 完成</span>
+      <span :class="['step', submitted ? 'step-active' : '']">③ {{ t('checkout.step3') }}</span>
     </div>
 
     <!-- ── Success screen ── -->
     <div v-if="submitted" class="success-screen">
       <div class="success-icon">🎉</div>
-      <h2 class="success-title">訂單已送出！</h2>
-      <p class="success-sub">感謝您的購買，我們將盡快與您聯繫。</p>
+      <h2 class="success-title">{{ t('checkout.success_title') }}</h2>
+      <p class="success-sub">{{ t('checkout.success_sub') }}</p>
       <div class="success-order-no">
-        <span class="order-label">訂單編號</span>
+        <span class="order-label">{{ t('checkout.order_no') }}</span>
         <span class="order-no">{{ orderNo }}</span>
       </div>
-      <RouterLink to="/store/catalog" class="btn-continue-shop">繼續購物</RouterLink>
+      <RouterLink to="/store/catalog" class="btn-continue-shop">{{ t('checkout.keep_shopping') }}</RouterLink>
     </div>
 
     <!-- ── Checkout layout ── -->
@@ -30,42 +30,42 @@
 
         <!-- Section 1: 收件資料 -->
         <section class="form-section">
-          <h2 class="section-title">📋 收件資料</h2>
+          <h2 class="section-title">📋 {{ t('checkout.receiver') }}</h2>
           <div class="form-grid">
             <div class="form-field">
-              <label class="field-label">姓名 <span class="required">*</span></label>
+              <label class="field-label">{{ t('checkout.name') }} <span class="required">*</span></label>
               <input
                 v-model="form.name"
                 class="field-input"
                 type="text"
-                placeholder="請輸入真實姓名"
+                :placeholder="t('checkout.name_ph')"
               />
             </div>
             <div class="form-field">
-              <label class="field-label">手機號碼 <span class="required">*</span></label>
+              <label class="field-label">{{ t('checkout.phone') }} <span class="required">*</span></label>
               <input
                 v-model="form.phone"
                 class="field-input"
                 type="tel"
-                placeholder="09xx-xxx-xxx"
+                :placeholder="t('checkout.phone_ph')"
               />
             </div>
             <div class="form-field">
-              <label class="field-label">LINE ID <span class="optional">（選填）</span></label>
+              <label class="field-label">{{ t('checkout.line_id') }} <span class="optional">（選填）</span></label>
               <input
                 v-model="form.lineId"
                 class="field-input"
                 type="text"
-                placeholder="您的 LINE ID"
+                :placeholder="t('checkout.line_ph')"
               />
             </div>
             <div class="form-field">
-              <label class="field-label">Email <span class="optional">（選填）</span></label>
+              <label class="field-label">{{ t('checkout.email') }} <span class="optional">（選填）</span></label>
               <input
                 v-model="form.email"
                 class="field-input"
                 type="email"
-                placeholder="email@example.com"
+                :placeholder="t('checkout.email_ph')"
               />
             </div>
           </div>
@@ -73,31 +73,31 @@
 
         <!-- Section 2: 取貨方式 -->
         <section class="form-section">
-          <h2 class="section-title">🚚 取貨方式</h2>
+          <h2 class="section-title">🚚 {{ t('checkout.shipping_title') }}</h2>
           <div class="radio-group">
             <label class="radio-card" :class="{ selected: form.shippingMethod === '711' }">
               <input type="radio" v-model="form.shippingMethod" value="711" />
               <div class="radio-content">
-                <span class="radio-title">🏪 超商取貨（7-ELEVEN）</span>
-                <span class="radio-sub">運費 NT$60（滿 NT$1,500 免運）</span>
+                <span class="radio-title">🏪 {{ t('checkout.ship_711') }}</span>
+                <span class="radio-sub">{{ t('checkout.ship_711_fee') }}</span>
               </div>
             </label>
             <label class="radio-card" :class="{ selected: form.shippingMethod === 'home' }">
               <input type="radio" v-model="form.shippingMethod" value="home" />
               <div class="radio-content">
-                <span class="radio-title">🚚 宅配到府</span>
-                <span class="radio-sub">運費 NT$100</span>
+                <span class="radio-title">🚚 {{ t('checkout.ship_home') }}</span>
+                <span class="radio-sub">{{ t('checkout.ship_home_fee') }}</span>
               </div>
             </label>
           </div>
 
           <div v-if="form.shippingMethod === '711'" class="conditional-field">
-            <label class="field-label">門市名稱 <span class="required">*</span></label>
+            <label class="field-label">{{ t('checkout.store_name') }} <span class="required">*</span></label>
             <input
               v-model="form.storeName"
               class="field-input"
               type="text"
-              placeholder="例：台北信義門市"
+              :placeholder="t('checkout.store_name_ph')"
             />
           </div>
         </section>
@@ -108,7 +108,7 @@
             class="collapsible-header"
             @click="addonOpen = !addonOpen"
           >
-            <h2 class="section-title" style="margin:0">🎁 加購商品 <span class="optional">（選填）</span></h2>
+            <h2 class="section-title" style="margin:0">🎁 {{ t('checkout.addon_title') }} <span class="optional">（選填）</span></h2>
             <span class="collapse-toggle">{{ addonOpen ? '▲' : '▼' }}</span>
           </div>
 
@@ -123,7 +123,7 @@
                 <span class="addon-name">{{ opt.name }}</span>
               </label>
               <span class="addon-price">
-                {{ opt.price === 0 ? '免費' : `NT$${opt.price}` }}
+                {{ opt.price === 0 ? t('checkout.addon_toggle') : `NT$${opt.price}` }}
               </span>
               <div v-if="opt.checked" class="addon-qty">
                 <button class="qty-btn" @click="changeAddonQty(idx, -1)" :disabled="opt.qty <= 1">−</button>
@@ -137,20 +137,20 @@
 
         <!-- Section 4: 付款方式 -->
         <section class="form-section">
-          <h2 class="section-title">💳 付款方式</h2>
+          <h2 class="section-title">💳 {{ t('checkout.payment_title') }}</h2>
           <div class="radio-group">
             <label class="radio-card" :class="{ selected: form.paymentMethod === 'transfer' }">
               <input type="radio" v-model="form.paymentMethod" value="transfer" />
               <div class="radio-content">
-                <span class="radio-title">🏦 銀行匯款</span>
-                <span class="radio-sub">下單後提供匯款資訊</span>
+                <span class="radio-title">🏦 {{ t('checkout.pay_transfer') }}</span>
+                <span class="radio-sub">{{ t('checkout.pay_transfer_sub') }}</span>
               </div>
             </label>
             <label class="radio-card" :class="{ selected: form.paymentMethod === 'cod' }">
               <input type="radio" v-model="form.paymentMethod" value="cod" />
               <div class="radio-content">
-                <span class="radio-title">💵 貨到付款</span>
-                <span class="radio-sub">超商取貨付款，+NT$30 手續費</span>
+                <span class="radio-title">💵 {{ t('checkout.pay_cod') }}</span>
+                <span class="radio-sub">{{ t('checkout.pay_cod_sub') }}</span>
               </div>
             </label>
           </div>
@@ -158,12 +158,12 @@
 
         <!-- Section 5: 訂單備註 -->
         <section class="form-section">
-          <h2 class="section-title">📝 訂單備註</h2>
+          <h2 class="section-title">📝 {{ t('checkout.note_title') }}</h2>
           <textarea
             v-model="form.note"
             class="field-textarea"
             rows="3"
-            placeholder="有任何特殊需求或備註請在此填寫..."
+            :placeholder="t('checkout.note_ph')"
           ></textarea>
         </section>
 
@@ -174,7 +174,7 @@
 
       <!-- Right: order summary -->
       <div class="checkout-summary">
-        <h2 class="summary-title">訂單摘要</h2>
+        <h2 class="summary-title">{{ t('checkout.order_summary') }}</h2>
 
         <!-- Cart items -->
         <div class="summary-items">
@@ -191,7 +191,7 @@
 
         <!-- Addon items -->
         <div v-if="selectedAddons.length > 0" class="summary-addons">
-          <div class="summary-section-label">加購商品</div>
+          <div class="summary-section-label">{{ t('checkout.addon_title') }}</div>
           <div
             v-for="addon in selectedAddons"
             :key="addon.name"
@@ -200,7 +200,7 @@
             <span class="si-name">{{ addon.name }}</span>
             <span class="si-qty">×{{ addon.qty }}</span>
             <span class="si-price">
-              {{ addon.price === 0 ? '免費' : `NT$${(addon.price * addon.qty).toLocaleString()}` }}
+              {{ addon.price === 0 ? t('checkout.addon_toggle') : `NT$${(addon.price * addon.qty).toLocaleString()}` }}
             </span>
           </div>
         </div>
@@ -210,21 +210,21 @@
         <!-- Price breakdown -->
         <div class="summary-rows">
           <div class="summary-row">
-            <span>商品小計</span>
+            <span>{{ t('checkout.order_summary') }}</span>
             <span>NT${{ cartSubtotal.toLocaleString() }}</span>
           </div>
           <div v-if="addonTotal > 0" class="summary-row">
-            <span>加購合計</span>
+            <span>{{ t('checkout.addon_total') }}</span>
             <span>NT${{ addonTotal.toLocaleString() }}</span>
           </div>
           <div class="summary-row">
-            <span>運費</span>
+            <span>{{ t('checkout.shipping_fee') }}</span>
             <span :class="{ 'free-ship': shipping === 0 }">
-              {{ shipping === 0 ? '免運費' : `NT$${shipping}` }}
+              {{ shipping === 0 ? t('checkout.addon_toggle') : `NT$${shipping}` }}
             </span>
           </div>
           <div v-if="codFee > 0" class="summary-row">
-            <span>代收手續費</span>
+            <span>{{ t('checkout.cod_fee') }}</span>
             <span>NT${{ codFee }}</span>
           </div>
         </div>
@@ -232,13 +232,13 @@
         <div class="summary-divider"></div>
 
         <div class="summary-total">
-          <span>總計</span>
+          <span>{{ t('checkout.grand_total') }}</span>
           <span class="total-amount">NT${{ grandTotal.toLocaleString() }}</span>
         </div>
 
         <!-- Points preview -->
         <div class="points-preview">
-          🎁 本次獲得 <strong>{{ earnPoints }}</strong> 點
+          🎁 {{ t('checkout.earn_preview', { n: earnPoints }) }}
         </div>
 
         <button
@@ -246,7 +246,7 @@
           @click="submitOrder"
           :disabled="submitting"
         >
-          {{ submitting ? '送出中…' : '確認送出訂單' }}
+          {{ submitting ? t('checkout.submitting') : t('checkout.submit') }}
         </button>
       </div>
     </div>
@@ -256,11 +256,13 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useCartStore } from '@/stores/cart'
 import { useStoreMemberStore } from '@/stores/storeMember'
 import { useAppDataStore } from '@/stores/appData'
 import { supabase } from '@/lib/supabase'
 
+const { t } = useI18n()
 const router = useRouter()
 const cart = useCartStore()
 const memberStore = useStoreMemberStore()
@@ -360,15 +362,15 @@ async function submitOrder() {
 
   // Validation
   if (!form.name.trim()) {
-    formError.value = '請填寫姓名'
+    formError.value = t('checkout.err_name')
     return
   }
   if (!form.phone.trim()) {
-    formError.value = '請填寫手機號碼'
+    formError.value = t('checkout.err_phone')
     return
   }
   if (form.shippingMethod === '711' && !form.storeName.trim()) {
-    formError.value = '請填寫取貨門市名稱'
+    formError.value = t('checkout.err_store')
     return
   }
 
@@ -427,7 +429,7 @@ async function submitOrder() {
     cart.clear()
   } catch (err) {
     console.error('[checkout] submitOrder error:', err)
-    formError.value = `送出失敗：${err.message || '請稍後再試'}`
+    formError.value = `${t('checkout.err_submit')}：${err.message || '請稍後再試'}`
   } finally {
     submitting.value = false
   }
@@ -455,15 +457,15 @@ async function submitOrder() {
 .step {
   padding: 6px 16px;
   border-radius: 999px;
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   color: var(--jj-text-sub);
   border: 1.5px solid var(--jj-border);
 }
 
 .step-active {
-  background: var(--jj-pink);
+  background: var(--jj-rose);
   color: #fff;
-  border-color: var(--jj-pink);
+  border-color: var(--jj-rose);
 }
 
 .step-done {
@@ -509,7 +511,7 @@ async function submitOrder() {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  background: var(--jj-pink-pale);
+  background: var(--jj-rose-pale);
   border-radius: 14px;
   padding: 16px 32px;
   margin-bottom: 28px;
@@ -525,14 +527,14 @@ async function submitOrder() {
 .order-no {
   font-size: 22px;
   font-weight: 800;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
   letter-spacing: 0.08em;
 }
 
 .btn-continue-shop {
   display: inline-block;
   padding: 14px 36px;
-  background: var(--jj-pink);
+  background: var(--jj-rose);
   color: #fff;
   border-radius: 999px;
   font-size: 16px;
@@ -542,7 +544,7 @@ async function submitOrder() {
 }
 
 .btn-continue-shop:hover {
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
 }
 
 /* ── Checkout layout ──────────────────────────── */
@@ -610,13 +612,13 @@ async function submitOrder() {
   border-radius: 10px;
   font-size: 14px;
   color: var(--jj-text);
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   transition: border-color 0.15s;
   outline: none;
 }
 
 .field-input:focus {
-  border-color: var(--jj-pink);
+  border-color: var(--jj-rose);
   background: var(--jj-white);
 }
 
@@ -646,15 +648,15 @@ async function submitOrder() {
 }
 
 .radio-card input[type='radio'] {
-  accent-color: var(--jj-pink);
+  accent-color: var(--jj-rose);
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 
 .radio-card.selected {
-  border-color: var(--jj-pink);
-  background: var(--jj-pink-pale);
+  border-color: var(--jj-rose);
+  background: var(--jj-rose-pale);
 }
 
 .radio-content {
@@ -701,7 +703,7 @@ async function submitOrder() {
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   border-radius: 10px;
 }
 
@@ -714,7 +716,7 @@ async function submitOrder() {
 }
 
 .addon-check-label input[type='checkbox'] {
-  accent-color: var(--jj-pink);
+  accent-color: var(--jj-rose);
   width: 16px;
   height: 16px;
 }
@@ -727,7 +729,7 @@ async function submitOrder() {
 .addon-price {
   font-size: 13px;
   font-weight: 600;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
   min-width: 60px;
   text-align: right;
 }
@@ -767,8 +769,8 @@ async function submitOrder() {
 }
 
 .qty-btn:hover:not(:disabled) {
-  background: var(--jj-pink-pale);
-  border-color: var(--jj-pink);
+  background: var(--jj-rose-pale);
+  border-color: var(--jj-rose);
 }
 
 .qty-btn:disabled {
@@ -784,7 +786,7 @@ async function submitOrder() {
   border-radius: 10px;
   font-size: 14px;
   color: var(--jj-text);
-  background: var(--jj-bg);
+  background: var(--jj-cream);
   resize: vertical;
   outline: none;
   font-family: inherit;
@@ -793,7 +795,7 @@ async function submitOrder() {
 }
 
 .field-textarea:focus {
-  border-color: var(--jj-pink);
+  border-color: var(--jj-rose);
   background: var(--jj-white);
 }
 
@@ -913,13 +915,13 @@ async function submitOrder() {
 .total-amount {
   font-size: 22px;
   font-weight: 800;
-  color: var(--jj-pink-dark);
+  color: var(--jj-rose-dark);
 }
 
 .points-preview {
   text-align: center;
   font-size: 13px;
-  color: var(--jj-purple);
+  color: var(--jj-plum);
   background: #f5f3ff;
   border-radius: 8px;
   padding: 8px 12px;
@@ -929,7 +931,7 @@ async function submitOrder() {
 .btn-submit {
   width: 100%;
   height: 52px;
-  background: var(--jj-pink);
+  background: var(--jj-rose);
   color: #fff;
   border: none;
   border-radius: 999px;
@@ -940,7 +942,7 @@ async function submitOrder() {
 }
 
 .btn-submit:hover:not(:disabled) {
-  background: var(--jj-pink-dark);
+  background: var(--jj-rose-dark);
 }
 
 .btn-submit:disabled {

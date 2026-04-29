@@ -5,9 +5,9 @@
     <section class="hero">
       <div class="hero-content">
         <div class="hero-emojis">🐰🐻🦊🐶🐼</div>
-        <h1 class="hero-title">每一只，都值得被愛</h1>
-        <p class="hero-sub">全台正版 Jellycat 專賣 · 精選款式 · 集點享優惠</p>
-        <RouterLink to="/store/catalog" class="hero-cta">立即選購</RouterLink>
+        <h1 class="hero-title">{{ t('home.hero_title') }}</h1>
+        <p class="hero-sub">{{ t('home.hero_sub') }}</p>
+        <RouterLink to="/store/catalog" class="hero-cta">{{ t('home.hero_cta') }}</RouterLink>
       </div>
     </section>
 
@@ -15,7 +15,7 @@
 
       <!-- ─────────────── 2. 快速分類 ─────────────── -->
       <section class="quick-cats">
-        <h2 class="section-title">探索品類</h2>
+        <h2 class="section-title">{{ t('catalog.category') }}</h2>
         <div class="cat-grid">
           <RouterLink
             v-for="cat in quickCats"
@@ -24,7 +24,7 @@
             class="cat-card"
           >
             <div class="cat-emoji">{{ cat.emoji }}</div>
-            <div class="cat-name">{{ cat.zh }}</div>
+            <div class="cat-name">{{ t('categories.' + cat.key, cat.key) }}</div>
           </RouterLink>
         </div>
       </section>
@@ -32,10 +32,10 @@
       <!-- ─────────────── 3. 熱銷排行 ─────────────── -->
       <section class="section">
         <div class="section-head">
-          <h2 class="section-title">🔥 熱銷排行</h2>
-          <RouterLink to="/store/catalog" class="section-more">查看全部 →</RouterLink>
+          <h2 class="section-title">🔥 {{ t('home.hot_title') }}</h2>
+          <RouterLink to="/store/catalog" class="section-more">{{ t('catalog.filter') }} →</RouterLink>
         </div>
-        <p class="section-sub">最受歡迎的明星款，手刀搶購中！</p>
+        <p class="section-sub">{{ t('home.hot_sub') }}</p>
         <div class="product-grid">
           <ProductCard
             v-for="p in hotProducts"
@@ -49,31 +49,31 @@
       <!-- ─────────────── 4. 集點活動 ─────────────── -->
       <section class="points-banner">
         <div class="points-left">
-          <div class="points-title">集點換好禮 🎁</div>
-          <p class="points-sub">每購買一只 Jellycat 即可累積 1 點，點數永久有效</p>
+          <div class="points-title">{{ t('home.points_title') }}</div>
+          <p class="points-sub">{{ t('home.points_sub') }}</p>
           <ul class="points-rules">
-            <li><span class="rule-dot">✦</span> 購買 1 只 = 累積 <strong>1 點</strong></li>
-            <li><span class="rule-dot">✦</span> 累積 <strong>5 點</strong> → 升等 <span class="tier-badge silver">銀牌會員</span></li>
-            <li><span class="rule-dot">✦</span> 累積 <strong>15 點</strong> → 升等 <span class="tier-badge gold">金牌會員</span></li>
-            <li><span class="rule-dot">✦</span> 累積 <strong>30 點</strong> → 升等 <span class="tier-badge platinum">白金會員</span></li>
+            <li><span class="rule-dot">✦</span> {{ t('home.points_rule1') }}</li>
+            <li><span class="rule-dot">✦</span> {{ t('home.points_rule2') }} <span class="tier-badge silver">{{ t('home.tier_silver') }}</span></li>
+            <li><span class="rule-dot">✦</span> {{ t('home.points_rule3') }} <span class="tier-badge gold">{{ t('home.tier_gold') }}</span></li>
+            <li><span class="rule-dot">✦</span> {{ t('home.points_rule4') }} <span class="tier-badge platinum">{{ t('home.tier_platinum') }}</span></li>
           </ul>
-          <RouterLink to="/store/member" class="points-cta">查看我的點數</RouterLink>
+          <RouterLink to="/store/member" class="points-cta">{{ t('home.featured_sub') }}</RouterLink>
         </div>
         <div class="points-right">
           <div class="tier-display">
             <div class="tier-item">
               <div class="tier-icon">🥈</div>
-              <div class="tier-label">銀牌</div>
+              <div class="tier-label">{{ t('home.tier_silver') }}</div>
               <div class="tier-req">5 點</div>
             </div>
             <div class="tier-item">
               <div class="tier-icon">🥇</div>
-              <div class="tier-label">金牌</div>
+              <div class="tier-label">{{ t('home.tier_gold') }}</div>
               <div class="tier-req">15 點</div>
             </div>
             <div class="tier-item">
               <div class="tier-icon">💎</div>
-              <div class="tier-label">白金</div>
+              <div class="tier-label">{{ t('home.tier_platinum') }}</div>
               <div class="tier-req">30 點</div>
             </div>
           </div>
@@ -83,10 +83,10 @@
       <!-- ─────────────── 5. 精選推薦 ─────────────── -->
       <section class="section">
         <div class="section-head">
-          <h2 class="section-title">✨ 精選推薦</h2>
-          <RouterLink to="/store/catalog" class="section-more">查看全部 →</RouterLink>
+          <h2 class="section-title">✨ {{ t('home.featured_title') }}</h2>
+          <RouterLink to="/store/catalog" class="section-more">{{ t('catalog.filter') }} →</RouterLink>
         </div>
-        <p class="section-sub">精選現貨商品，品質保證</p>
+        <p class="section-sub">{{ t('home.featured_sub') }}</p>
         <div class="product-grid">
           <ProductCard
             v-for="p in newProducts"
@@ -110,29 +110,17 @@
 <script setup>
 import { ref, computed, defineComponent, h } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAppDataStore } from '@/stores/appData'
 import { useCartStore } from '@/stores/cart'
+
+const { t } = useI18n()
 
 // ── Stores ───────────────────────────────────────────────────────────────────
 const store = useAppDataStore()
 const cart  = useCartStore()
 
 // ── Category setup ───────────────────────────────────────────────────────────
-const CATEGORY_ZH_MAP = {
-  Bunnies:    '兔子',
-  Bears:      '熊熊',
-  Dogs:       '狗狗',
-  Cats:       '貓咪',
-  Elephants:  '大象',
-  Foxes:      '狐狸',
-  Dinosaurs:  '恐龍',
-  Penguins:   '企鵝',
-  Monkeys:    '猴子',
-  Horses:     '馬馬',
-  Jellyfish:  '水母',
-  Other:      '其他',
-}
-
 const CATEGORY_EMOJI_MAP = {
   Bunnies:    '🐰',
   Bears:      '🐻',
@@ -168,7 +156,6 @@ const CATEGORY_GRADIENT_MAP = {
 const quickCats = computed(() =>
   store.jellycatCategories.slice(0, 8).map(key => ({
     key,
-    zh:    CATEGORY_ZH_MAP[key]   || key,
     emoji: CATEGORY_EMOJI_MAP[key] || '🧸',
   }))
 )
@@ -179,7 +166,6 @@ const storeProducts = computed(() =>
     id:                  inv.id || inv.product_id,
     product_name:        inv.product_name,
     jellycat_category:   inv.jellycat_category,
-    jellycat_category_zh: inv.jellycat_category_zh || CATEGORY_ZH_MAP[inv.jellycat_category] || inv.jellycat_category,
     store_price:         inv.avg_cost_twd > 0 ? Math.round(inv.avg_cost_twd * 1.35) : null,
     current_stock:       inv.current_stock,
     sold_qty:            inv.sold_qty || 0,
@@ -222,9 +208,9 @@ function addToCart(product) {
     product_name: product.product_name,
     price:        product.store_price || 0,
     stock:        product.current_stock,
-    category_zh:  product.jellycat_category_zh,
+    category_zh:  t('categories.' + product.jellycat_category, product.jellycat_category),
   })
-  showToast(`已加入購物車：${product.product_name} 🐾`)
+  showToast(`${t('catalog.add_cart')}：${product.product_name} 🐾`)
 }
 
 // ── Inline ProductCard component ──────────────────────────────────────────────
@@ -239,7 +225,7 @@ const ProductCard = defineComponent({
       const p = props.product
       const priceText = p.store_price
         ? `NT$ ${p.store_price.toLocaleString()}`
-        : '洽詢價格'
+        : t('catalog.price_query')
 
       return h('div', { class: 'product-card' }, [
         // Image area
@@ -253,19 +239,19 @@ const ProductCard = defineComponent({
         // Body
         h('div', { class: 'product-body' }, [
           // Category tag
-          h('div', { class: 'product-cat-tag' }, p.jellycat_category_zh || p.jellycat_category),
+          h('div', { class: 'product-cat-tag' }, t('categories.' + p.jellycat_category, p.jellycat_category)),
 
           // Name
           h('div', { class: 'product-name' }, p.product_name),
 
           // Sold count chip
           p.sold_qty > 0
-            ? h('div', { class: 'sold-chip' }, `已售 ${p.sold_qty} 只`)
+            ? h('div', { class: 'sold-chip' }, t('catalog.sold_count', { n: p.sold_qty }))
             : null,
 
           // Stock warning
           p.current_stock > 0 && p.current_stock <= 2
-            ? h('div', { class: 'stock-warn' }, `⚠️ 僅剩 ${p.current_stock} 只！`)
+            ? h('div', { class: 'stock-warn' }, `⚠️ ${t('catalog.almost_gone')}`)
             : null,
 
           // Price row
@@ -278,7 +264,7 @@ const ProductCard = defineComponent({
             class: ['add-to-cart-btn', !p.in_stock ? 'disabled' : ''],
             disabled: !p.in_stock,
             onClick: () => emit('add', p),
-          }, p.in_stock ? '加入購物車 🛍️' : '暫無庫存'),
+          }, p.in_stock ? `${t('catalog.add_cart')} 🛍️` : t('catalog.sold_out')),
         ]),
       ])
     }
@@ -315,7 +301,7 @@ const ProductCard = defineComponent({
 .hero-title {
   font-size: 2.4rem;
   font-weight: 800;
-  color: var(--jj-pink-dark, #db2777);
+  color: var(--jj-rose-dark, #db2777);
   margin: 0;
   line-height: 1.2;
 }
@@ -329,7 +315,7 @@ const ProductCard = defineComponent({
 
 .hero-cta {
   display: inline-block;
-  background: var(--jj-pink, #f472b6);
+  background: var(--jj-rose, #f472b6);
   color: white;
   font-size: 16px;
   font-weight: 700;
@@ -341,7 +327,7 @@ const ProductCard = defineComponent({
 }
 
 .hero-cta:hover {
-  background: var(--jj-pink-dark, #db2777);
+  background: var(--jj-rose-dark, #db2777);
   transform: translateY(-2px);
   box-shadow: 0 8px 28px rgba(244, 114, 182, 0.45);
 }
@@ -382,7 +368,7 @@ const ProductCard = defineComponent({
 .cat-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--jj-shadow-lg, 0 8px 40px rgba(244, 114, 182, 0.18));
-  border-color: var(--jj-pink, #f472b6);
+  border-color: var(--jj-rose, #f472b6);
 }
 
 .cat-emoji {
@@ -418,7 +404,7 @@ const ProductCard = defineComponent({
 
 .section-more {
   font-size: 13px;
-  color: var(--jj-pink-dark, #db2777);
+  color: var(--jj-rose-dark, #db2777);
   text-decoration: none;
   font-weight: 600;
   transition: opacity 0.15s;
@@ -481,8 +467,8 @@ const ProductCard = defineComponent({
 
 :deep(.product-cat-tag) {
   display: inline-block;
-  background: var(--jj-pink-light, #fce7f3);
-  color: var(--jj-pink-dark, #db2777);
+  background: var(--jj-rose-light, #fce7f3);
+  color: var(--jj-rose-dark, #db2777);
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
@@ -512,7 +498,7 @@ const ProductCard = defineComponent({
 
 :deep(.stock-warn) {
   font-size: 11px;
-  color: var(--jj-accent, #fb923c);
+  color: var(--jj-gold, #fb923c);
   font-weight: 600;
 }
 
@@ -525,14 +511,14 @@ const ProductCard = defineComponent({
 :deep(.product-price) {
   font-size: 18px;
   font-weight: 700;
-  color: var(--jj-pink-dark, #db2777);
+  color: var(--jj-rose-dark, #db2777);
 }
 
 :deep(.add-to-cart-btn) {
   margin-top: auto;
   width: 100%;
   padding: 10px 0;
-  background: var(--jj-pink, #f472b6);
+  background: var(--jj-rose, #f472b6);
   color: white;
   border: none;
   border-radius: var(--jj-radius-sm, 8px);
@@ -543,7 +529,7 @@ const ProductCard = defineComponent({
 }
 
 :deep(.add-to-cart-btn:hover:not(.disabled)) {
-  background: var(--jj-pink-dark, #db2777);
+  background: var(--jj-rose-dark, #db2777);
 }
 
 :deep(.add-to-cart-btn.disabled) {
@@ -678,7 +664,7 @@ const ProductCard = defineComponent({
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--jj-pink-dark, #db2777);
+  background: var(--jj-rose-dark, #db2777);
   color: white;
   font-size: 14px;
   font-weight: 600;
