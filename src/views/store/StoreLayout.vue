@@ -36,7 +36,7 @@
           </button>
 
           <!-- Member -->
-          <RouterLink to="/store/member" class="icon-btn">
+          <RouterLink to="/store/member" class="icon-btn" active-class="" exact-active-class="">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -48,7 +48,7 @@
           </RouterLink>
 
           <!-- Cart -->
-          <RouterLink to="/store/cart" class="icon-btn">
+          <RouterLink to="/store/cart" class="icon-btn" active-class="" exact-active-class="">
             <span class="cart-wrap">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -69,7 +69,13 @@
     <!-- ══════════════ CATEGORY NAV ══════════════ -->
     <nav class="cat-nav">
       <div class="cat-nav-inner">
-        <RouterLink to="/store/catalog" class="cat-link" exact-active-class="cat-active">
+        <RouterLink
+          to="/store/catalog"
+          class="cat-link"
+          active-class=""
+          exact-active-class=""
+          :class="{ 'cat-active': route.path === '/store/catalog' && !route.query.cat }"
+        >
           {{ t('nav.allProducts') }}
         </RouterLink>
         <RouterLink
@@ -78,6 +84,7 @@
           :to="{ path: '/store/catalog', query: { cat } }"
           class="cat-link"
           active-class=""
+          exact-active-class=""
           :class="{ 'cat-active': route.query.cat === cat }"
         >
           {{ t(`categories.${cat}`, cat) }}
@@ -401,8 +408,7 @@ const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
   flex-shrink: 0;
 }
 .cat-link:hover { color: var(--jj-rose-dark); }
-.cat-active,
-.cat-link.router-link-exact-active {
+.cat-active {
   color: var(--jj-rose-dark);
   border-bottom-color: var(--jj-rose-dark);
   font-weight: 700;
