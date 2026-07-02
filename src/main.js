@@ -35,6 +35,18 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
   window.history.replaceState(null, '', '/store/auth/callback')
 })()
 
+// ── PKCE code stash ─────────────────────────────────────────────────────────
+// Runs synchronously at module load — BEFORE the router guard or storeAuth.init
+// — so the ?code= from a Google/email OAuth redirect is captured before anything
+// strips it from the URL. storeAuth.init() then exchanges it for a session.
+;(function stashPkceCode() {
+  try {
+    const sp = new URLSearchParams(window.location.search)
+    const code = sp.get('code')
+    if (code && sp.get('state')) sessionStorage.setItem('jj_pkce_code', code)
+  } catch { /* ignore */ }
+})()
+
 // ── i18n ──────────────────────────────────────────────────────────────────
 // Chinese-first site: always start in 中文, ignore any stale localStorage value
 localStorage.removeItem('jj_lang')

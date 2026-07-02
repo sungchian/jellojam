@@ -207,6 +207,22 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
         }
       }
 
+      // 1.5 PKCE code exchange. The router guard strips ?code= from the URL
+      //     (redirect to /store/auth/callback) BEFORE the lazily-loaded Supabase
+      //     client can auto-exchange it, so Google/email OAuth would otherwise
+      //     never establish a session. The guard stashes the code here; we
+      //     exchange it explicitly. Safe/idempotent: skipped if no code, and
+      //     getSession() below picks up whatever session this creates.
+      const pkceCode = sessionStorage.getItem('jj_pkce_code')
+      if (pkceCode) {
+        sessionStorage.removeItem('jj_pkce_code')
+        try {
+          await supabase.auth.exchangeCodeForSession(pkceCode)
+        } catch (e) {
+          console.warn('[storeAuth] PKCE exchange failed, code:', e?.code ?? 'unknown')
+        }
+      }
+
       // 2. Normal session restore (returning visitor / PKCE callback)
       const { data: { session: s } } = await supabase.auth.getSession()
       if (s) {

@@ -168,6 +168,9 @@ router.beforeEach(async (to, _from, next) => {
     to.path !== '/store/auth/callback'
   ) {
     _pkceHandled = true
+    // The auth code was already stashed synchronously in main.js (jj_pkce_code)
+    // before this guard ran; storeAuth.init() exchanges it for a session.
+    // Here we just strip it from the URL and route to the callback page.
     window.history.replaceState(null, '', window.location.pathname + window.location.hash)
     return next('/store/auth/callback')
   }
