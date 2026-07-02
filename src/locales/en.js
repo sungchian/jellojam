@@ -143,6 +143,7 @@ export default {
     keep_shopping:  'Continue Shopping',
     err_name:       'Please enter your name',
     err_phone:      'Please enter your phone number',
+    err_phone_format: 'Invalid format — enter a Taiwan mobile number (10 digits starting with 09)',
     err_store:      'Please enter the pickup store name',
     err_submit:     'Submit failed, please try again',
   },

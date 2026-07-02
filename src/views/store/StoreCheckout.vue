@@ -89,12 +89,15 @@
               <input
                 v-model="form.phone"
                 class="field-input"
+                :class="{ 'field-input-error': phoneError }"
                 type="tel"
                 inputmode="numeric"
-                pattern="[0-9]*"
+                pattern="09[0-9]{8}"
+                maxlength="10"
                 :placeholder="t('checkout.phone_ph')"
-                @input="form.phone = form.phone.replace(/\D/g, '')"
+                @input="form.phone = form.phone.replace(/\D/g, '').slice(0, 10)"
               />
+              <p v-if="phoneError" class="field-hint-error">{{ t('checkout.err_phone_format') }}</p>
             </div>
             <div class="form-field">
               <label class="field-label">{{ t('checkout.line_id') }} <span class="optional">（選填）</span></label>
@@ -375,6 +378,12 @@ const form = reactive({
   note: '',
 })
 
+// Taiwan mobile: exactly 09 followed by 8 digits (10 digits total).
+const TW_MOBILE_RE = /^09\d{8}$/
+// Immediate inline validation — true only when the user has typed something
+// that isn't a valid TW mobile number (empty shows no error until submit).
+const phoneError = computed(() => form.phone.length > 0 && !TW_MOBILE_RE.test(form.phone))
+
 // ── Addon options ─────────────────────────────────────────────────────────────
 const ADDON_OPTIONS = [
   { name: '防水破壞袋', price: 0, maxQty: 1 },
@@ -560,6 +569,10 @@ async function submitOrder() {
   }
   if (!form.phone.trim()) {
     formError.value = t('checkout.err_phone')
+    return
+  }
+  if (!TW_MOBILE_RE.test(form.phone)) {
+    formError.value = t('checkout.err_phone_format')
     return
   }
   if (form.shippingMethod === '711' && !form.storeName.trim()) {
@@ -978,6 +991,15 @@ async function submitOrder() {
   background: var(--jj-cream);
   transition: border-color 0.15s;
   outline: none;
+}
+.field-input-error {
+  border-color: #e05561;
+  background: #fdf3f4;
+}
+.field-hint-error {
+  margin: 5px 2px 0;
+  font-size: 12px;
+  color: #e05561;
 }
 
 .field-input:focus {

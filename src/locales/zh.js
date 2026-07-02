@@ -143,6 +143,7 @@ export default {
     keep_shopping:  '繼續購物',
     err_name:       '請填寫姓名',
     err_phone:      '請填寫手機號碼',
+    err_phone_format: '手機格式錯誤，請輸入台灣手機號碼（09 開頭共 10 碼）',
     err_store:      '請填寫取貨門市名稱',
     err_submit:     '送出失敗，請稍後再試',
   },
