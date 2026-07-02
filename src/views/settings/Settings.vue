@@ -11,7 +11,7 @@
           class="settings-nav-item"
           :class="{ active: activeSection === item.key }"
           @click="activeSection = item.key">
-          <el-icon><component :is="item.icon" /></el-icon>
+          <component :is="item.icon" :size="16" />
           <span>{{ item.label }}</span>
         </div>
       </div>
@@ -27,7 +27,7 @@
             </el-form-item>
             <el-form-item label="平台 Logo">
               <el-upload action="#" :auto-upload="false" :show-file-list="false" list-type="picture-card" class="logo-upload">
-                <el-icon><Plus /></el-icon>
+                <Plus :size="20" />
               </el-upload>
             </el-form-item>
             <el-form-item label="客服 Email">
@@ -242,7 +242,7 @@
         <div class="modal-box">
           <div class="modal-header">
             <span class="modal-title">{{ staffModalMode === 'edit' ? '編輯人員' : '新增人員' }}</span>
-            <el-button text @click="closeStaffModal"><el-icon><Close /></el-icon></el-button>
+            <el-button text @click="closeStaffModal"><Close :size="16" /></el-button>
           </div>
 
           <div class="modal-body">
@@ -280,8 +280,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Close } from '@element-plus/icons-vue'
-import { supabase } from '@/lib/supabase'
+import {
+  Plus, X as Close,
+  Settings, DollarSign, CreditCard, Truck, Bell, Users, FileText,
+} from 'lucide-vue-next'
+import { supabaseAdmin as supabase } from '@/lib/supabase'
 
 // ── Column widths (single source of truth) ──────────────────────
 const COL = {
@@ -312,13 +315,13 @@ const logActionFilter = ref('')
 const logDateRange    = ref(null)
 
 const navItems = [
-  { key: 'general',      label: '基本設定',   icon: 'Setting'    },
-  { key: 'exchange',     label: '匯率與費用', icon: 'Money'      },
-  { key: 'payment',      label: '金流設定',   icon: 'CreditCard' },
-  { key: 'logistics',    label: '物流設定',   icon: 'Van'        },
-  { key: 'notification', label: '通知設定',   icon: 'Bell'       },
-  { key: 'roles',        label: '帳號與權限', icon: 'UserFilled' },
-  { key: 'logs',         label: '操作日誌',   icon: 'Document'   },
+  { key: 'general',      label: '基本設定',   icon: Settings    },
+  { key: 'exchange',     label: '匯率與費用', icon: DollarSign  },
+  { key: 'payment',      label: '金流設定',   icon: CreditCard  },
+  { key: 'logistics',    label: '物流設定',   icon: Truck       },
+  { key: 'notification', label: '通知設定',   icon: Bell        },
+  { key: 'roles',        label: '帳號與權限', icon: Users       },
+  { key: 'logs',         label: '操作日誌',   icon: FileText    },
 ]
 
 const generalForm = ref({

@@ -26,7 +26,7 @@
             :class="{ active: isActive(item.path) }"
           >
             <div class="nav-item-icon-wrap">
-              <el-icon class="nav-icon"><component :is="item.icon" /></el-icon>
+              <component :is="item.icon" class="nav-icon" :size="17" :stroke-width="1.8" />
             </div>
             <span class="nav-label" v-show="!collapsed">{{ item.label }}</span>
             <span v-if="item.badge && !collapsed" class="nav-badge">{{ item.badge }}</span>
@@ -43,11 +43,11 @@
             <p class="user-role">{{ auth.roleLabel }}</p>
           </div>
           <button class="logout-btn" @click="handleLogout" title="登出">
-            <el-icon><SwitchButton /></el-icon>
+            <LogOut :size="15" :stroke-width="2" />
           </button>
         </div>
         <button v-if="collapsed" class="logout-btn-collapsed" @click="handleLogout" title="登出">
-          <el-icon><SwitchButton /></el-icon>
+          <LogOut :size="15" :stroke-width="2" />
         </button>
       </div>
     </aside>
@@ -59,7 +59,8 @@
       <header class="app-header">
         <div class="header-left">
           <button class="collapse-btn" @click="collapsed = !collapsed">
-            <el-icon size="17"><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
+            <PanelLeftClose v-if="!collapsed" :size="17" :stroke-width="1.8" />
+            <PanelLeftOpen  v-else            :size="17" :stroke-width="1.8" />
           </button>
           <div class="breadcrumb-wrap">
             <BreadCrumb />
@@ -67,7 +68,9 @@
         </div>
         <div class="header-right">
           <el-badge :value="pendingCount || null" :max="99" class="notif-badge">
-            <button class="header-icon-btn"><el-icon size="17"><Bell /></el-icon></button>
+            <button class="header-icon-btn">
+              <Bell :size="17" :stroke-width="1.8" />
+            </button>
           </el-badge>
           <div class="header-divider"></div>
 
@@ -79,7 +82,7 @@
                 <span class="header-user-name">{{ auth.user?.name }}</span>
                 <span class="header-user-role">{{ auth.roleLabel }}</span>
               </div>
-              <el-icon size="12" style="color:var(--color-text-muted);margin-left:2px"><ArrowDown /></el-icon>
+              <ChevronDown :size="12" :stroke-width="2" style="color:var(--color-text-muted);margin-left:2px" />
             </div>
             <template #dropdown>
               <el-dropdown-menu class="user-dropdown-menu">
@@ -112,10 +115,10 @@
                 <el-divider style="margin:6px 0" />
 
                 <el-dropdown-item :command="{ action: 'settings' }">
-                  <el-icon><Setting /></el-icon> 系統設定
+                  <Settings :size="14" :stroke-width="1.8" style="margin-right:6px" /> 系統設定
                 </el-dropdown-item>
                 <el-dropdown-item :command="{ action: 'logout' }" class="logout-menu-item">
-                  <el-icon><SwitchButton /></el-icon> 登出
+                  <LogOut :size="14" :stroke-width="1.8" style="margin-right:6px" /> 登出
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -124,11 +127,9 @@
       </header>
 
       <!-- Page -->
-      <main class="page-content">
+      <main class="page-content" ref="pageContentRef">
         <RouterView v-slot="{ Component }">
-          <Transition name="page" mode="out-in">
-            <component :is="Component" :key="$route.path" />
-          </Transition>
+          <component :is="Component" :key="$route.path" />
         </RouterView>
       </main>
     </div>
@@ -136,18 +137,67 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ElMessageBox, ElMessage, ElNotification } from 'element-plus'
+import {
+  LayoutDashboard, ShoppingBag, LayoutGrid, Package,
+  ClipboardList, Users, DollarSign, FileText, Settings,
+  LogOut, PanelLeftClose, PanelLeftOpen, Bell, ChevronDown,
+} from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useAppDataStore } from '@/stores/appData'
 import BreadCrumb from '@/components/common/BreadCrumb.vue'
+import { useIdleTimeout } from '@/composables/useIdleTimeout'
 
 const auth = useAuthStore()
 const store = useAppDataStore()
 const route = useRoute()
 const router = useRouter()
 const collapsed = ref(false)
+const pageContentRef = ref(null)
+
+// ── Session Timeout: 30-minute idle → auto logout ─────────────────────────
+// Warn at 25 min, force logout at 30 min.
+const IDLE_WARN_MS = 25 * 60 * 1000
+let warnTimer = null
+
+useIdleTimeout({
+  minutes: 30,
+  onIdle: async () => {
+    clearTimeout(warnTimer)
+    await auth.logout()
+    ElMessage.warning('閒置超過 30 分鐘，已自動登出以保護帳號安全')
+    router.replace('/login')
+  },
+})
+
+// Warn 5 minutes before timeout — reset activity will cancel the forced logout
+import { onMounted, onUnmounted } from 'vue'
+const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart']
+function resetWarnTimer() {
+  clearTimeout(warnTimer)
+  warnTimer = setTimeout(() => {
+    ElNotification({
+      title:    '即將自動登出',
+      message:  '您已閒置 25 分鐘，5 分鐘後將自動登出。移動滑鼠或按任意鍵可延長登入狀態。',
+      type:     'warning',
+      duration: 10000,
+    })
+  }, IDLE_WARN_MS)
+}
+onMounted(() => {
+  ACTIVITY_EVENTS.forEach(e => window.addEventListener(e, resetWarnTimer, { passive: true }))
+  resetWarnTimer()
+})
+onUnmounted(() => {
+  ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, resetWarnTimer))
+  clearTimeout(warnTimer)
+})
+
+watch(() => route.path, () => {
+  nextTick(() => { if (pageContentRef.value) pageContentRef.value.scrollTop = 0 })
+})
 
 const roleLabels = { super_admin: '超級管理員', admin: '管理員' }
 
@@ -182,30 +232,34 @@ async function handleUserCommand({ action, user }) {
 const menuGroups = [
   {
     label: '總覽',
-    items: [{ path: '/dashboard', label: '儀表板', icon: 'Odometer' }],
+    items: [{ path: '/dashboard', label: '儀表板', icon: LayoutDashboard }],
   },
   {
     label: '商品',
     items: [
-      { path: '/products',   label: '商品管理', icon: 'ShoppingBag' },
-      { path: '/categories', label: '分類管理', icon: 'Grid' },
-      { path: '/inventory',  label: '庫存管理', icon: 'Box' },
+      { path: '/products',   label: '商品管理', icon: ShoppingBag },
+      { path: '/categories', label: '分類管理', icon: LayoutGrid  },
+      { path: '/inventory',  label: '庫存管理', icon: Package     },
     ],
   },
   {
     label: '訂單 & 客戶',
     items: [
-      { path: '/orders',    label: '訂單管理', icon: 'List' },
-      { path: '/customers', label: '客戶管理', icon: 'UserFilled' },
+      { path: '/orders',    label: '訂單管理', icon: ClipboardList },
+      { path: '/customers', label: '客戶管理', icon: Users         },
     ],
   },
   {
     label: '財務',
-    items: [{ path: '/finance', label: '財務管理', icon: 'Money' }],
+    items: [{ path: '/finance', label: '財務管理', icon: DollarSign }],
+  },
+  {
+    label: '內容',
+    items: [{ path: '/journal', label: '文章管理', icon: FileText }],
   },
   {
     label: '系統',
-    items: [{ path: '/settings', label: '系統設定', icon: 'Setting' }],
+    items: [{ path: '/settings', label: '系統設定', icon: Settings }],
   },
 ]
 
@@ -344,7 +398,19 @@ async function handleLogout() {
 .nav-item.active .nav-item-icon-wrap {
   background: rgba(99,102,241,0.30);
 }
-.nav-icon { font-size: 15px; color: inherit; }
+
+/* Lucide icon animations (lucide-animated style) */
+.nav-icon {
+  color: inherit;
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s;
+}
+.nav-item:hover .nav-icon {
+  transform: scale(1.18) rotate(-4deg);
+}
+.nav-item.active .nav-icon {
+  transform: scale(1.1);
+}
+
 .nav-label { flex: 1; font-weight: 500; }
 .nav-item.active .nav-label { font-weight: 600; }
 .nav-badge {
@@ -427,6 +493,7 @@ async function handleLogout() {
   flex-shrink: 0;
 }
 .collapse-btn:hover { background: var(--color-bg); color: var(--color-text-primary); }
+.collapse-btn:hover svg { transform: scale(1.12); transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
 
 .breadcrumb-wrap { display: flex; align-items: center; }
 
@@ -439,6 +506,17 @@ async function handleLogout() {
   transition: background var(--transition), color var(--transition);
 }
 .header-icon-btn:hover { background: var(--color-bg); color: var(--color-text-primary); }
+/* Bell shake animation on hover */
+.header-icon-btn:hover svg {
+  animation: bell-shake 0.4s ease;
+}
+@keyframes bell-shake {
+  0%,100% { transform: rotate(0deg); }
+  20%      { transform: rotate(-12deg); }
+  40%      { transform: rotate(12deg); }
+  60%      { transform: rotate(-8deg); }
+  80%      { transform: rotate(6deg); }
+}
 
 .header-divider { width: 1px; height: 24px; background: var(--color-border); margin: 0 4px; }
 

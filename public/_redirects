@@ -1,0 +1,3 @@
+# Netlify SPA fallback — required for Vue Router history mode
+# Without this, a direct visit to /store/catalog returns a 404 from the CDN.
+/*    /index.html    200

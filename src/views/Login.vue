@@ -7,30 +7,25 @@
     <div class="login-card">
       <div class="login-brand">
         <div class="brand-logo">🛍️</div>
-        <h1 class="brand-name">NagouBuy</h1>
+        <h1 class="brand-name">JelloJam</h1>
         <p class="brand-sub">ERP 後台管理系統</p>
       </div>
 
       <el-form :model="form" :rules="rules" ref="formRef" @submit.prevent="handleLogin">
         <el-form-item prop="email">
-          <el-input v-model="form.email" placeholder="電子郵件" size="large" prefix-icon="Message" />
+          <el-input v-model="form.email" placeholder="電子郵件" size="large" prefix-icon="Message"
+            autocomplete="email" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" placeholder="密碼" size="large" prefix-icon="Lock" show-password />
+          <el-input v-model="form.password" type="password" placeholder="密碼" size="large"
+            prefix-icon="Lock" show-password autocomplete="current-password" />
         </el-form-item>
-        <el-button type="primary" size="large" :loading="loading" @click="handleLogin" class="login-btn" native-type="submit">
+        <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+        <el-button type="primary" size="large" :loading="loading" @click="handleLogin"
+          class="login-btn" native-type="submit">
           登入系統
         </el-button>
       </el-form>
-
-      <div class="demo-accounts">
-        <p class="demo-title">測試帳號</p>
-        <div class="demo-item" v-for="acc in demoAccounts" :key="acc.email" @click="fillDemo(acc)">
-          <span class="demo-role">{{ acc.role }}</span>
-          <span class="demo-email">{{ acc.email }}</span>
-        </div>
-        <p class="demo-pwd">密碼均為：<code>jellojam2026</code></p>
-      </div>
     </div>
   </div>
 </template>
@@ -38,41 +33,31 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter()
-const auth = useAuthStore()
+const router  = useRouter()
+const auth    = useAuthStore()
 const formRef = ref()
 const loading = ref(false)
+const errorMsg = ref('')
 
-const form = ref({ email: 'kelsey@jellojam.com', password: 'jellojam2026' })
+const form = ref({ email: '', password: '' })
 const rules = {
-  email: [{ required: true, message: '請輸入電子郵件', trigger: 'blur' }],
-  password: [{ required: true, message: '請輸入密碼', trigger: 'blur' }],
-}
-const demoAccounts = [
-  { role: '超級管理員', email: 'kelsey@jellojam.com' },
-  { role: '管理員',   email: 'karina@jellojam.com' },
-]
-
-function fillDemo(acc) {
-  form.value.email = acc.email
-  form.value.password = 'jellojam2026'
+  email:    [{ required: true, message: '請輸入電子郵件', trigger: 'blur' }],
+  password: [{ required: true, message: '請輸入密碼',     trigger: 'blur' }],
 }
 
 async function handleLogin() {
   await formRef.value.validate(async (valid) => {
     if (!valid) return
-    loading.value = true
-    await new Promise(r => setTimeout(r, 600))
-    const result = auth.login(form.value)
+    loading.value  = true
+    errorMsg.value = ''
+    const result = await auth.login(form.value)
     loading.value = false
     if (result.success) {
-      ElMessage.success('登入成功！歡迎回來')
       router.push('/dashboard')
     } else {
-      ElMessage.error(result.message)
+      errorMsg.value = result.message
     }
   })
 }
@@ -124,13 +109,8 @@ async function handleLogin() {
 }
 .login-brand { text-align: center; margin-bottom: 36px; }
 .brand-logo { font-size: 48px; margin-bottom: 8px; }
-.brand-name {
-  font-size: 28px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.5px;
-}
-.brand-sub { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+.brand-name { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+.brand-sub  { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; }
 :deep(.el-input__wrapper) {
   background: rgba(255,255,255,0.07) !important;
   border: 1px solid rgba(255,255,255,0.12) !important;
@@ -150,48 +130,10 @@ async function handleLogin() {
   margin-top: 8px;
   letter-spacing: 1px;
 }
-.demo-accounts {
-  margin-top: 28px;
-  padding: 16px;
-  background: rgba(255,255,255,0.04);
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-}
-.demo-title {
-  font-size: 11px;
-  color: rgba(255,255,255,0.4);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
-}
-.demo-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-  margin-bottom: 2px;
-}
-.demo-item:hover { background: rgba(255,255,255,0.07); }
-.demo-role {
-  font-size: 11px;
-  font-weight: 600;
-  color: #818cf8;
-  min-width: 70px;
-}
-.demo-email { font-size: 12px; color: rgba(255,255,255,0.5); }
-.demo-pwd {
-  font-size: 12px;
-  color: rgba(255,255,255,0.35);
-  margin-top: 10px;
-}
-.demo-pwd code {
-  background: rgba(255,255,255,0.1);
-  padding: 1px 6px;
-  border-radius: 4px;
-  color: #a5b4fc;
-  font-family: var(--font-mono);
+.error-msg {
+  font-size: 13px;
+  color: #f87171;
+  text-align: center;
+  margin: 4px 0 8px;
 }
 </style>

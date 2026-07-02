@@ -15,10 +15,53 @@
       <div class="success-icon">🎉</div>
       <h2 class="success-title">{{ t('checkout.success_title') }}</h2>
       <p class="success-sub">{{ t('checkout.success_sub') }}</p>
+
+      <!-- Order number -->
       <div class="success-order-no">
         <span class="order-label">{{ t('checkout.order_no') }}</span>
         <span class="order-no">{{ orderNo }}</span>
       </div>
+
+      <!-- Bank transfer card (only when paid by transfer) -->
+      <div v-if="paidByTransfer" class="transfer-card">
+        <div class="transfer-header">
+          <span class="transfer-icon">🏦</span>
+          <span class="transfer-heading">請於 24 小時內完成匯款</span>
+        </div>
+        <div class="transfer-rows">
+          <div class="transfer-row">
+            <span class="tr-label">銀行</span>
+            <span class="tr-val">{{ BANK_INFO.bank }}（{{ BANK_INFO.branch }}）</span>
+          </div>
+          <div class="transfer-row">
+            <span class="tr-label">戶名</span>
+            <span class="tr-val">{{ BANK_INFO.holder }}</span>
+          </div>
+          <div class="transfer-row highlight-row">
+            <span class="tr-label">帳號</span>
+            <span class="tr-val account-no">{{ BANK_INFO.account }}</span>
+          </div>
+          <div class="transfer-row highlight-row">
+            <span class="tr-label">金額</span>
+            <span class="tr-val amount-val">NT${{ finalTotal.toLocaleString() }}</span>
+          </div>
+        </div>
+        <p class="transfer-note">✦ 匯款後請務必透過 LINE 傳送轉帳截圖，方便我們確認</p>
+      </div>
+
+      <!-- LINE contact block -->
+      <div class="line-contact-block">
+        <p class="line-contact-msg">
+          {{ paidByTransfer ? '完成匯款後，請加入 LINE 官方帳號傳送截圖' : '有任何問題，歡迎透過 LINE 官方帳號聯絡我們' }}
+        </p>
+        <a :href="BANK_INFO.line_url" target="_blank" rel="noopener" class="btn-line">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.208 2 11.423c0 4.661 3.671 8.557 8.637 9.285.337.073.795.224.912.514.105.263.069.675.034.94l-.148.89c-.045.268-.209 1.046.916.57 1.125-.476 6.067-3.573 8.277-6.117C22.057 15.174 22 13.327 22 11.423 22 6.208 17.523 2 12 2z"/>
+          </svg>
+          私訊 LINE 官方帳號確認訂單
+        </a>
+      </div>
+
       <RouterLink to="/store/catalog" class="btn-continue-shop">{{ t('checkout.keep_shopping') }}</RouterLink>
     </div>
 
@@ -47,7 +90,10 @@
                 v-model="form.phone"
                 class="field-input"
                 type="tel"
+                inputmode="numeric"
+                pattern="[0-9]*"
                 :placeholder="t('checkout.phone_ph')"
+                @input="form.phone = form.phone.replace(/\D/g, '')"
               />
             </div>
             <div class="form-field">
@@ -128,11 +174,42 @@
               <div v-if="opt.checked" class="addon-qty">
                 <button class="qty-btn" @click="changeAddonQty(idx, -1)" :disabled="opt.qty <= 1">−</button>
                 <span class="addon-qty-val">{{ opt.qty }}</span>
-                <button class="qty-btn" @click="changeAddonQty(idx, 1)">＋</button>
+                <button class="qty-btn" @click="changeAddonQty(idx, 1)" :disabled="opt.qty >= (opt.maxQty ?? 99)">＋</button>
               </div>
               <span v-else class="addon-qty-placeholder"></span>
             </div>
           </div>
+        </section>
+
+        <!-- Section 3.5: 優惠碼 -->
+        <section class="form-section coupon-section">
+          <h2 class="section-title">🎟️ 優惠碼 <span class="optional">（選填）</span></h2>
+          <div class="coupon-row">
+            <input
+              v-model="couponInput"
+              class="field-input coupon-input"
+              type="text"
+              placeholder="請輸入優惠碼"
+              :disabled="!!appliedCoupon || couponChecking"
+              @keydown.enter="applyCoupon"
+              @input="couponError = ''"
+            />
+            <button
+              v-if="!appliedCoupon"
+              class="coupon-btn"
+              @click="applyCoupon"
+              :disabled="!couponInput.trim() || couponChecking"
+            >
+              <span v-if="couponChecking" class="spin-sm"></span>
+              {{ couponChecking ? '' : '套用' }}
+            </button>
+            <button v-else class="coupon-remove-btn" @click="removeCoupon" title="移除優惠碼">✕</button>
+          </div>
+          <div v-if="appliedCoupon" class="coupon-applied">
+            <span class="coupon-tag">{{ appliedCoupon.code }}</span>
+            <span class="coupon-desc">{{ appliedCoupon.description }} — 折抵 NT${{ discountAmount }}</span>
+          </div>
+          <p v-if="couponError" class="coupon-error">{{ couponError }}</p>
         </section>
 
         <!-- Section 4: 付款方式 -->
@@ -227,6 +304,10 @@
             <span>{{ t('checkout.cod_fee') }}</span>
             <span>NT${{ codFee }}</span>
           </div>
+          <div v-if="discountAmount > 0" class="summary-row discount-row">
+            <span>🎟️ 優惠折抵</span>
+            <span class="discount-val">－NT${{ discountAmount }}</span>
+          </div>
         </div>
 
         <div class="summary-divider"></div>
@@ -258,20 +339,27 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore } from '@/stores/cart'
-import { useStoreMemberStore } from '@/stores/storeMember'
+import { useStoreAuthStore } from '@/stores/storeAuth'
 import { useAppDataStore } from '@/stores/appData'
 import { supabase } from '@/lib/supabase'
 
 const { t } = useI18n()
 const router = useRouter()
 const cart = useCartStore()
-const memberStore = useStoreMemberStore()
+const memberStore = useStoreAuthStore()
 const appData = useAppDataStore()
 
-// Redirect if cart is empty
+// Redirect if cart is empty; pre-fill form from logged-in member
 onMounted(() => {
   if (cart.itemCount === 0) {
     router.replace('/store/catalog')
+    return
+  }
+  const c = memberStore.customer
+  if (c) {
+    if (c.name || c.display_name) form.name  = c.display_name || c.name
+    if (c.email)                   form.email = c.email
+    if (c.line_user_id)            form.lineId = c.line_user_id
   }
 })
 
@@ -289,7 +377,7 @@ const form = reactive({
 
 // ── Addon options ─────────────────────────────────────────────────────────────
 const ADDON_OPTIONS = [
-  { name: '防水破壞袋', price: 0 },
+  { name: '防水破壞袋', price: 0, maxQty: 1 },
   { name: '紙箱', price: 20 },
   { name: 'Jellycat防塵袋-小', price: 80 },
   { name: 'Jellycat防塵袋-中', price: 150 },
@@ -309,8 +397,10 @@ const addonSelections = reactive(
 const addonOpen = ref(true)
 
 function changeAddonQty(idx, delta) {
-  const next = addonSelections[idx].qty + delta
-  if (next >= 1) addonSelections[idx].qty = next
+  const opt  = addonSelections[idx]
+  const maxQ = opt.maxQty ?? Infinity
+  const next = opt.qty + delta
+  if (next >= 1 && next <= maxQ) opt.qty = next
 }
 
 const selectedAddons = computed(() =>
@@ -331,17 +421,103 @@ const shipping = computed(() => {
 
 const codFee = computed(() => (form.paymentMethod === 'cod' ? 30 : 0))
 
+// ── Coupon ────────────────────────────────────────────────────────────────────
+const couponInput    = ref('')
+const couponChecking = ref(false)
+const couponError    = ref('')
+const appliedCoupon  = ref(null)   // { code, description, discount_type, discount_value }
+
+const discountAmount = computed(() => {
+  if (!appliedCoupon.value) return 0
+  const c = appliedCoupon.value
+  const base = cartSubtotal.value + addonTotal.value + shipping.value + codFee.value
+  if (c.discount_type === 'fixed')   return Math.min(c.discount_value, base)
+  if (c.discount_type === 'percent') return Math.floor(base * c.discount_value / 100)
+  return 0
+})
+
+async function applyCoupon() {
+  const code = couponInput.value.trim().toUpperCase()
+  if (!code) return
+
+  couponChecking.value = true
+  couponError.value    = ''
+
+  try {
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('code, description, discount_type, discount_value, min_order_amount, expires_at, usage_limit, used_count, is_active')
+      .eq('code', code)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (error) {
+      console.error('[coupon] query error, code:', error?.code)
+      couponError.value = '查詢優惠碼失敗，請稍後再試'
+      return
+    }
+    if (!data) {
+      couponError.value = '此優惠碼無效或已過期'
+      return
+    }
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      couponError.value = '此優惠碼已過期'
+      return
+    }
+    if (data.usage_limit && data.used_count >= data.usage_limit) {
+      couponError.value = '此優惠碼已達使用上限'
+      return
+    }
+    if (data.min_order_amount && cartSubtotal.value < data.min_order_amount) {
+      couponError.value = `此優惠碼需訂單滿 NT$${data.min_order_amount} 才可使用`
+      return
+    }
+    appliedCoupon.value  = data
+    couponInput.value    = ''
+  } catch (e) {
+    console.error('[coupon] unexpected error, code:', e?.code)
+    couponError.value = '查詢優惠碼失敗，請稍後再試'
+  } finally {
+    couponChecking.value = false
+  }
+}
+
+function removeCoupon() {
+  appliedCoupon.value = null
+  couponInput.value   = ''
+  couponError.value   = ''
+}
+
 const grandTotal = computed(
-  () => cartSubtotal.value + addonTotal.value + shipping.value + codFee.value
+  () => Math.max(0, cartSubtotal.value + addonTotal.value + shipping.value + codFee.value - discountAmount.value)
 )
 
 const earnPoints = computed(() => cart.items.reduce((sum, item) => sum + item.qty, 0))
 
+// ── Bank transfer info (update these before going live) ───────────────────────
+const BANK_INFO = {
+  bank:    '中國信託',        // 銀行名稱
+  branch:  '822',        // 分行
+  account: '761540221196',  // ← 換成真實帳號
+  holder:  'JelloJam',        // 戶名
+  line_url: 'https://line.me/ti/p/~@685evhie', // ← 換成真實 LINE 連結
+}
+
 // ── Submission ────────────────────────────────────────────────────────────────
-const submitting = ref(false)
-const submitted = ref(false)
-const orderNo = ref('')
-const formError = ref('')
+const submitting   = ref(false)
+const submitted    = ref(false)
+const orderNo      = ref('')
+const formError    = ref('')
+const paidByTransfer = ref(false)
+const finalTotal   = ref(0)
+
+// Local calendar date (YYYY-MM-DD). toISOString() is UTC and would record
+// tomorrow's date for evening North-America shoppers.
+function todayLocal() {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
 
 function genOrderNo(dateStr) {
   const datePart = dateStr.replace(/-/g, '')
@@ -350,14 +526,31 @@ function genOrderNo(dateStr) {
 }
 
 function dateToWeek(dateStr) {
-  const date = new Date(dateStr)
+  const [y, m, day] = String(dateStr).split('-').map(Number)
+  const date = new Date(y, (m || 1) - 1, day || 1)
   const startOfYear = new Date(date.getFullYear(), 0, 1)
   const dayOfYear = Math.floor((date - startOfYear) / 86400000)
   const weekNo = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7)
   return `${date.getFullYear()}${String(weekNo).padStart(2, '0')}`
 }
 
+// Idempotency key persisted for THIS cart, so a retry (reload, timeout re-click)
+// reuses the same key and the orders.idempotency_key UNIQUE constraint actually
+// dedupes. Reset whenever the cart contents change (see submitOrder success).
+function getIdempotencyKey() {
+  const KEY = 'jj_checkout_idem'
+  let k = sessionStorage.getItem(KEY)
+  if (!k) {
+    k = crypto.randomUUID()
+    try { sessionStorage.setItem(KEY, k) } catch {}
+  }
+  return k
+}
+
 async function submitOrder() {
+  // Idempotency guard: prevent double-submit (e.g. network lag → user clicks again)
+  if (submitting.value) return
+
   formError.value = ''
 
   // Validation
@@ -376,60 +569,79 @@ async function submitOrder() {
 
   submitting.value = true
 
+  // 20 秒超時保護
+  let timeoutId
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('請求逾時，請檢查網路後重試')), 20000)
+  })
+
   try {
-    const today = new Date().toISOString().slice(0, 10)
-    const newOrderNo = genOrderNo(today)
+    const today = todayLocal()
     const salesWeek = dateToWeek(today)
+    // Stable across retries for this cart so the server-side idempotency check
+    // dedupes duplicate submissions (reload / timeout re-click).
+    const idempotencyKey = getIdempotencyKey()
 
-    const addonItemsPayload = selectedAddons.value.map(a => ({
-      name: a.name,
-      qty: a.qty,
-      price: a.price,
-    }))
+    // Server-side order creation. We send ONLY product ids + quantities and the
+    // customer's own contact info — every price/fee/discount is recomputed by
+    // create_storefront_order() (SECURITY DEFINER) from the catalog, so the
+    // client cannot tamper with amounts and never touches the orders table
+    // directly. This also enforces stock, coupons and idempotency atomically.
+    const payload = {
+      idempotency_key: idempotencyKey,
+      customer_id:     memberStore.customer?.id ?? null,
+      customer_name:   form.name,
+      phone:           form.phone   || null,
+      line_user_id:    form.lineId   || null,
+      email:           form.email    || null,
+      logistics_name:  form.storeName || null,
+      note:            form.note      || null,
+      sales_date:      today,
+      sales_week:      salesWeek,
+      shipping_method: form.shippingMethod,
+      payment_method:  form.paymentMethod,
+      coupon_code:     appliedCoupon.value?.code || null,
+      items:  cart.items.map(item => ({ product_id: item.id, qty: item.qty })),
+      addons: selectedAddons.value.map(a => ({ name: a.name, qty: a.qty })),
+    }
 
-    // Insert order
-    const { data: orderData, error: orderErr } = await supabase
-      .from('orders')
-      .insert({
-        order_no: newOrderNo,
-        customer_id: memberStore.customer?.id ?? null,
-        customer_name: form.name,
-        sales_date: today,
-        sales_week: salesWeek,
-        status: '已填表單',
-        note: form.note || null,
-        logistics_name: form.storeName || null,
-        payment_amount: null,
-        addon_amount: addonTotal.value || null,
-        '711_fee': shipping.value,
-        addon_items: addonItemsPayload.length ? addonItemsPayload : null,
-      })
-      .select()
-      .single()
+    const { data: result, error: rpcErr } = await Promise.race([
+      supabase.rpc('create_storefront_order', { p_payload: payload }),
+      timeoutPromise,
+    ])
 
-    if (orderErr) throw orderErr
+    if (rpcErr) {
+      // Out-of-stock → show a clear, user-facing message instead of the generic one.
+      if (rpcErr.hint === 'INSUFFICIENT_STOCK' || /INSUFFICIENT_STOCK/.test(rpcErr.message || '')) {
+        throw new Error('很抱歉，部分商品庫存不足，請調整數量後再試')
+      }
+      throw rpcErr
+    }
 
-    // Insert order items
-    const orderItemsPayload = cart.items.map(item => ({
-      order_id: orderData.id,
-      product_name: item.product_name,
-      qty: item.qty,
-      selling_price: item.price,
-    }))
-
-    const { error: itemsErr } = await supabase
-      .from('order_items')
-      .insert(orderItemsPayload)
-
-    if (itemsErr) throw itemsErr
-
-    // Success
-    orderNo.value = newOrderNo
-    submitted.value = true
+    // Success (result also carries the authoritative server-computed total)
+    clearTimeout(timeoutId)
+    orderNo.value        = result?.order_no || ''
+    paidByTransfer.value = form.paymentMethod === 'transfer'
+    finalTotal.value     = Number(result?.total) || grandTotal.value
+    submitted.value      = true
+    // New key for the next order; this cart is done.
+    sessionStorage.removeItem('jj_checkout_idem')
     cart.clear()
   } catch (err) {
-    console.error('[checkout] submitOrder error:', err)
-    formError.value = `${t('checkout.err_submit')}：${err.message || '請稍後再試'}`
+    clearTimeout(timeoutId)
+    // Log error code only — never log full error object (may contain schema/data details)
+    console.error('[checkout] submitOrder failed, code:', err?.code ?? 'unknown')
+    // Show user-friendly message; don't expose Supabase internals (hint/details)
+    const passthrough = err?.message && (
+      err.message === '請求逾時，請檢查網路後重試' ||
+      err.message.startsWith('很抱歉')
+    )
+    const msg = passthrough ? err.message : '訂單送出失敗，請稍後再試或聯繫客服'
+    formError.value = msg
+    // 自動捲到錯誤訊息
+    setTimeout(() => {
+      document.querySelector('.form-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 50)
   } finally {
     submitting.value = false
   }
@@ -442,6 +654,39 @@ async function submitOrder() {
   margin: 0 auto;
   padding: 24px 16px;
 }
+
+/* ── Coupon ────────────────────────────────────── */
+.coupon-section { background: #fffbf0; border: 1.5px dashed #fcd34d; border-radius: 14px; }
+.coupon-row { display: flex; gap: 8px; }
+.coupon-input { flex: 1; font-family: monospace; letter-spacing: 1px; text-transform: uppercase; }
+.coupon-btn {
+  height: 44px; padding: 0 20px; background: var(--jj-rose-dark); color: #fff;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px;
+  transition: background .15s;
+}
+.coupon-btn:hover:not(:disabled) { background: var(--jj-rose); }
+.coupon-btn:disabled { opacity: .45; cursor: not-allowed; }
+.coupon-remove-btn {
+  height: 44px; width: 44px; background: #fee2e2; color: #b91c1c;
+  border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0; transition: background .15s;
+}
+.coupon-remove-btn:hover { background: #fecaca; }
+.coupon-applied {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: #065f46;
+}
+.coupon-tag {
+  background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;
+  border-radius: 6px; padding: 2px 10px; font-family: monospace; font-weight: 700; font-size: 13px;
+}
+.coupon-desc { color: #065f46; font-weight: 500; }
+.coupon-error { font-size: 13px; color: #ef4444; font-weight: 600; margin: 0; }
+.discount-row { color: #065f46; }
+.discount-val { font-weight: 800; color: #065f46; }
+.spin-sm { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Step bar ─────────────────────────────────── */
 .step-bar {
@@ -545,6 +790,124 @@ async function submitOrder() {
 
 .btn-continue-shop:hover {
   background: var(--jj-rose-dark);
+}
+
+/* ── Transfer card ────────────────────────────── */
+.transfer-card {
+  width: 100%;
+  max-width: 440px;
+  background: #f0fdf4;
+  border: 2px solid #86efac;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.transfer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.transfer-icon { font-size: 22px; }
+
+.transfer-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.transfer-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.transfer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.tr-label {
+  color: #4b5563;
+  font-weight: 500;
+  flex-shrink: 0;
+  width: 48px;
+}
+
+.tr-val {
+  color: #111827;
+  font-weight: 500;
+  text-align: right;
+}
+
+.highlight-row {
+  background: rgba(255,255,255,0.7);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.account-no {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #166534;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-val {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--jj-rose-dark);
+}
+
+.transfer-note {
+  font-size: 12px;
+  color: #4b7c5a;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── LINE contact block ───────────────────────── */
+.line-contact-block {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.line-contact-msg {
+  margin: 0;
+  font-size: 14px;
+  color: var(--jj-text-sub);
+  text-align: center;
+}
+
+.btn-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #06c755;
+  color: #fff;
+  padding: 13px 28px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn-line:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
 }
 
 /* ── Checkout layout ──────────────────────────── */

@@ -85,7 +85,7 @@
               <el-col :span="8">
                 <el-form-item label="台灣售價（TWD）">
                   <el-input :value="`NT$ ${form.twdPrice.toLocaleString()}`" readonly>
-                    <template #prefix><el-icon><Money /></el-icon></template>
+                    <template #prefix><Money :size="14" /></template>
                   </el-input>
                 </el-form-item>
               </el-col>
@@ -127,13 +127,13 @@
                 <p class="upload-label">主圖（必填）</p>
                 <el-upload action="#" :auto-upload="false" :show-file-list="false" accept="image/*" list-type="picture-card" class="main-uploader">
                   <img v-if="form.image" :src="form.image" class="preview-img" />
-                  <el-icon v-else size="28"><Plus /></el-icon>
+                  <Plus v-else :size="28" />
                 </el-upload>
               </div>
               <div class="sub-upload">
                 <p class="upload-label">附圖（最多8張）</p>
                 <el-upload action="#" :auto-upload="false" multiple :limit="8" accept="image/*" list-type="picture-card">
-                  <el-icon><Plus /></el-icon>
+                  <Plus :size="20" />
                 </el-upload>
               </div>
             </div>
@@ -228,7 +228,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Money } from '@element-plus/icons-vue'
+import { Plus, DollarSign as Money } from 'lucide-vue-next'
 import { useAppDataStore } from '@/stores/appData'
 const store = useAppDataStore()
 

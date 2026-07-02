@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 120" width="210" height="120">
+  <!--
+    JelloJam logo — transparent background (去背)
+    Pink: #F5AABE  |  Dark outline: #5C3347  |  White sticker border
+  -->
+
+  <!-- Layer 1: wide white stroke → sticker border effect -->
+  <text x="105" y="54"
+    text-anchor="middle"
+    font-family="'Fredoka One', cursive"
+    font-size="60"
+    stroke="white" stroke-width="20" stroke-linejoin="round"
+    fill="white">Jello</text>
+  <text x="105" y="112"
+    text-anchor="middle"
+    font-family="'Fredoka One', cursive"
+    font-size="60"
+    stroke="white" stroke-width="20" stroke-linejoin="round"
+    fill="white">Jam</text>
+
+  <!-- Layer 2: dark brown outline -->
+  <text x="105" y="54"
+    text-anchor="middle"
+    font-family="'Fredoka One', cursive"
+    font-size="60"
+    stroke="#5C3347" stroke-width="11" stroke-linejoin="round"
+    paint-order="stroke fill"
+    fill="#F5AABE">Jello</text>
+  <text x="105" y="112"
+    text-anchor="middle"
+    font-family="'Fredoka One', cursive"
+    font-size="60"
+    stroke="#5C3347" stroke-width="11" stroke-linejoin="round"
+    paint-order="stroke fill"
+    fill="#F5AABE">Jam</text>
+</svg>

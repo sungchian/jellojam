@@ -1,6 +1,36 @@
 import { createClient } from '@supabase/supabase-js'
 
-export const supabase = createClient(
-  'https://iifhubablhxibpsyeagi.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpZmh1YmFibGh4aWJwc3llYWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MzYyMzUsImV4cCI6MjA5MjExMjIzNX0.OcdLCzEVrZ86wUJ6EitYorCyhfpJt_mQ1TkRmcv2-Z4'
-)
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!SUPABASE_URL || !SUPABASE_ANON) {
+  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env')
+}
+
+// ── Storefront client ─────────────────────────────────────────────────────────
+// Handles customer OAuth / email sessions. Persists across tabs & refreshes.
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: {
+    flowType:           'pkce',
+    detectSessionInUrl: true,
+    persistSession:     true,
+    autoRefreshToken:   true,
+    storageKey:         'jj_store_session',
+  },
+})
+
+// ── ERP admin client ──────────────────────────────────────────────────────────
+// Uses a SEPARATE storageKey so ERP and storefront sessions never collide.
+// ERP staff authenticate via Supabase Auth (real JWT, not fake token).
+export const supabaseERP = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: {
+    flowType:           'pkce',
+    detectSessionInUrl: false,
+    persistSession:     true,
+    autoRefreshToken:   true,
+    storageKey:         'jj_erp_session',
+  },
+})
+
+// ── Legacy alias (used by appData.js and admin views via supabaseAdmin) ───────
+export const supabaseAdmin = supabaseERP

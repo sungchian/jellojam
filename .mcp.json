@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref", "iifhubablhxibpsyeagi",
+        "--read-only"
+      ],
+      "env": {
+        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
+      },
+      "description": "直接查詢 JelloJam Supabase DB（唯讀模式）"
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "description": "查 Vue 3 / Supabase / Element Plus 最新文件"
+    }
+  }
+}

@@ -24,7 +24,7 @@
           :style="{ '--card-accent': s.accent, '--card-glow': s.glow }"
         >
           <div class="stat-card-icon" :style="{ background: s.bg }">
-            <el-icon :style="{ color: s.color }" size="20"><component :is="s.icon"/></el-icon>
+            <component :is="s.icon" :size="20" :style="{ color: s.color }" />
           </div>
           <div class="stat-card-value">{{ s.value }}</div>
           <div class="stat-card-label">{{ s.label }}</div>
@@ -136,7 +136,7 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="操作" :width="COL.actions" fixed="right" align="center">
+            <el-table-column label="操作" :width="COL.actions" fixed="right" align="center" class-name="col-action">
               <template #default="{ row }">
                 <el-button text type="primary" size="small" :icon="Edit" @click="openEdit(row)">編輯</el-button>
               </template>
@@ -290,10 +290,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { Search, Download, Refresh, Edit, Close } from '@element-plus/icons-vue'
+import {
+  Search, Download, RefreshCw as Refresh, SquarePen as Edit, X as Close,
+  Box, PackageOpen, AlertTriangle, XCircle,
+} from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { useAppDataStore } from '@/stores/appData'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase'
 
 // ── 英文 → 繁中 分類對照（與 ProductList 保持一致）───────────
 const CATEGORY_ZH_MAP = {
@@ -399,19 +402,19 @@ function resetFilters() {
 
 const invStats = computed(() => [
   {
-    label: '商品總 SKU', value: store.mockInventory.length, icon: 'Box',
+    label: '商品總 SKU', value: store.mockInventory.length, icon: Box,
     bg: '#eef2ff', color: '#6366f1', accent: 'linear-gradient(90deg,#6366f1,#818cf8)', glow: 'rgba(99,102,241,0.08)',
   },
   {
-    label: '在台現貨品項', value: store.mockInventory.filter(p => (p.taiwan_stock || 0) > 0).length, icon: 'Goods',
+    label: '在台現貨品項', value: store.mockInventory.filter(p => (p.taiwan_stock || 0) > 0).length, icon: PackageOpen,
     bg: '#ecfdf5', color: '#10b981', accent: 'linear-gradient(90deg,#10b981,#34d399)', glow: 'rgba(16,185,129,0.08)',
   },
   {
-    label: '低庫存商品', value: store.lowStockProducts.filter(p => p.current_stock > 0).length, icon: 'Warning',
+    label: '低庫存商品', value: store.lowStockProducts.filter(p => p.current_stock > 0).length, icon: AlertTriangle,
     bg: '#fffbeb', color: '#f59e0b', accent: 'linear-gradient(90deg,#f59e0b,#fbbf24)', glow: 'rgba(245,158,11,0.08)',
   },
   {
-    label: '缺貨商品', value: store.mockInventory.filter(p => p.current_stock === 0).length, icon: 'CircleClose',
+    label: '缺貨商品', value: store.mockInventory.filter(p => p.current_stock === 0).length, icon: XCircle,
     bg: '#fef2f2', color: '#ef4444', accent: 'linear-gradient(90deg,#ef4444,#f87171)', glow: 'rgba(239,68,68,0.08)',
   },
 ])
@@ -580,7 +583,7 @@ async function submitEdit() {
 
   } catch (err) {
     saveError.value = err.message
-    console.error('[編輯庫存]', err)
+    console.error('[編輯庫存] code:', err?.code)
   } finally {
     saving.value = false
   }

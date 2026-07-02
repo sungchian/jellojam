@@ -24,7 +24,7 @@
           :style="{ '--card-accent': s.accent, '--card-glow': s.glow }"
         >
           <div class="stat-card-icon" :style="{ background: s.bg }">
-            <el-icon :style="{ color: s.color }" size="22"><component :is="s.icon"/></el-icon>
+            <component :is="s.icon" :size="22" :style="{ color: s.color }" />
           </div>
           <div class="stat-card-value" :style="s.valueColor ? { color: s.valueColor } : {}">{{ s.value }}</div>
           <div class="stat-card-label">{{ s.label }}</div>
@@ -116,7 +116,7 @@
               :filters="purBankFilterOptions"
               :filter-method="() => true"
             />
-            <el-table-column label="操作" :width="COL.pur_actions" align="center" fixed="right">
+            <el-table-column label="操作" :width="COL.pur_actions" align="center" fixed="right" class-name="col-action">
               <template #default="{ row }">
                 <el-button text type="primary" size="small" :icon="Edit" @click="openPurEdit(row)">編輯</el-button>
                 <el-button text type="danger" size="small" :icon="Delete" @click="deletePurchase(row)">刪除</el-button>
@@ -195,7 +195,7 @@
                 <el-tag size="small" :type="row.paid_by==='Kelsey'?'primary':'success'">{{ row.paid_by }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" :width="COL.exp_actions" align="center" fixed="right">
+            <el-table-column label="操作" :width="COL.exp_actions" align="center" fixed="right" class-name="col-action">
               <template #default="{ row }">
                 <el-button text type="primary" size="small" :icon="Edit" @click="openExpEdit(row)">編輯</el-button>
                 <el-button text type="danger" size="small" :icon="Delete" @click="deleteExpense(row)">刪除</el-button>
@@ -405,11 +405,14 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick, reactive } from 'vue'
-import { Search, Download, Refresh, Plus, Close, Delete, Edit } from '@element-plus/icons-vue'
+import {
+  Search, Download, RefreshCw as Refresh, Plus, X as Close, Trash2 as Delete, SquarePen as Edit,
+  TrendingUp, ShoppingCart, Truck, DollarSign,
+} from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
-import { useAppDataStore } from '@/stores/appData'
-import { supabase } from '@/lib/supabase'
+import { useAppDataStore, csvEscape } from '@/stores/appData'
+import { supabaseAdmin as supabase } from '@/lib/supabase'
 
 // ── Column widths (single source of truth) ──────────────────
 const COL = {
@@ -469,10 +472,10 @@ function onPurFilterChange(filters) { purColFilters.value = { ...purColFilters.v
 function onExpFilterChange(filters) { expColFilters.value = { ...expColFilters.value, ...filters } }
 
 const summaryCards = computed(() => [
-  { label: '總銷售額', value: `NT$ ${Math.round(store.totalRevenue).toLocaleString()}`, icon: 'TrendCharts', bg: '#ecfdf5', color: '#10b981', accent: 'linear-gradient(90deg,#10b981,#34d399)', glow: 'rgba(16,185,129,0.08)' },
-  { label: '採購成本', value: `NT$ ${Math.round(store.totalCost).toLocaleString()}`,    icon: 'ShoppingCart', bg: '#fef2f2', color: '#ef4444', accent: 'linear-gradient(90deg,#ef4444,#f87171)', glow: 'rgba(239,68,68,0.08)' },
-  { label: '營運費用', value: `NT$ ${Math.round(store.totalExpense).toLocaleString()}`,  icon: 'Van',         bg: '#fffbeb', color: '#f59e0b', accent: 'linear-gradient(90deg,#f59e0b,#fbbf24)', glow: 'rgba(245,158,11,0.08)' },
-  { label: '毛利潤',  value: `NT$ ${Math.round(store.totalProfit).toLocaleString()}`,   icon: 'Money',       bg: '#eef2ff', color: '#6366f1', accent: 'linear-gradient(90deg,#6366f1,#818cf8)', glow: 'rgba(99,102,241,0.08)', valueColor: store.totalProfit >= 0 ? '#10b981' : '#ef4444' },
+  { label: '總銷售額', value: `NT$ ${Math.round(store.totalRevenue).toLocaleString()}`, icon: TrendingUp,   bg: '#ecfdf5', color: '#10b981', accent: 'linear-gradient(90deg,#10b981,#34d399)', glow: 'rgba(16,185,129,0.08)' },
+  { label: '採購成本', value: `NT$ ${Math.round(store.totalCost).toLocaleString()}`,    icon: ShoppingCart, bg: '#fef2f2', color: '#ef4444', accent: 'linear-gradient(90deg,#ef4444,#f87171)', glow: 'rgba(239,68,68,0.08)' },
+  { label: '營運費用', value: `NT$ ${Math.round(store.totalExpense).toLocaleString()}`,  icon: Truck,        bg: '#fffbeb', color: '#f59e0b', accent: 'linear-gradient(90deg,#f59e0b,#fbbf24)', glow: 'rgba(245,158,11,0.08)' },
+  { label: '毛利潤',  value: `NT$ ${Math.round(store.totalProfit).toLocaleString()}`,   icon: DollarSign,   bg: '#eef2ff', color: '#6366f1', accent: 'linear-gradient(90deg,#6366f1,#818cf8)', glow: 'rgba(99,102,241,0.08)', valueColor: store.totalProfit >= 0 ? '#10b981' : '#ef4444' },
 ])
 
 const purFiltered = computed(() => store.mockPurchases.filter(p => {
@@ -802,7 +805,7 @@ function exportCSV() {
   }
 }
 function downloadCSV(rows, name) {
-  const csv = rows.map(r => r.join(',')).join('\n')
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)

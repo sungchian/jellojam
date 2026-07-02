@@ -1,41 +1,81 @@
-/** Pinia auth store — handles login/logout/role for ERP staff */
+/**
+ * ERP staff authentication store.
+ * Uses real Supabase Auth — JWT is validated server-side on every request.
+ * Staff accounts must be created in Supabase Dashboard → Authentication → Users
+ * with user_metadata: { name: '...', role: 'super_admin' | 'admin' }
+ */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { supabaseERP } from '@/lib/supabase'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user  = ref(JSON.parse(localStorage.getItem('jj_user')  || 'null'))
-  const token = ref(localStorage.getItem('jj_token') || '')
-  const isLoggedIn = computed(() => !!token.value)
+  const _session = ref(null)
+  const _user    = ref(null)
 
-  const USERS = [
-    { id: 1, name: 'Kelsey', email: 'kelsey@jellojam.com', role: 'super_admin' },
-    { id: 2, name: 'Karina', email: 'karina@jellojam.com', role: 'admin' },
-  ]
+  // ── Computed ───────────────────────────────────────────────────────────────
 
-  function login({ email, password }) {
-    const found = USERS.find(u => u.email === email)
-    if (found && password === 'jellojam2026') {
-      user.value  = found
-      token.value = 'jj_' + Date.now()
-      localStorage.setItem('jj_user',  JSON.stringify(found))
-      localStorage.setItem('jj_token', token.value)
-      return { success: true }
+  const isLoggedIn = computed(() => !!_session.value)
+
+  // Expose user shape compatible with existing ERP views
+  const user = computed(() => {
+    if (!_user.value) return null
+    return {
+      id:    _user.value.id,
+      name:  _user.value.user_metadata?.name  || _user.value.email,
+      email: _user.value.email,
+      role:  _user.value.user_metadata?.role  || 'admin',
     }
-    return { success: false, message: '帳號或密碼錯誤' }
+  })
+
+  const roleLabel = computed(() =>
+    ({ super_admin: '超級管理員', admin: '管理員' }[user.value?.role] || ''),
+  )
+
+  // ── Init: restore session on app start ────────────────────────────────────
+
+  async function init() {
+    const { data: { session } } = await supabaseERP.auth.getSession()
+    _session.value = session
+    _user.value    = session?.user ?? null
+
+    supabaseERP.auth.onAuthStateChange((_event, s) => {
+      _session.value = s
+      _user.value    = s?.user ?? null
+    })
   }
 
-  function logout() {
-    user.value = null; token.value = ''
-    localStorage.removeItem('jj_user'); localStorage.removeItem('jj_token')
+  // ── Login ─────────────────────────────────────────────────────────────────
+
+  async function login({ email, password }) {
+    const { data, error } = await supabaseERP.auth.signInWithPassword({
+      email:    email.trim().toLowerCase(),
+      password,
+    })
+
+    if (error) return { success: false, message: _authMsg(error) }
+
+    _session.value = data.session
+    _user.value    = data.user
+    return { success: true }
   }
 
-  function switchUser(u) {
-    user.value  = u
-    token.value = 'jj_' + Date.now()
-    localStorage.setItem('jj_user',  JSON.stringify(u))
-    localStorage.setItem('jj_token', token.value)
+  // ── Logout ────────────────────────────────────────────────────────────────
+
+  async function logout() {
+    await supabaseERP.auth.signOut()
+    _session.value = null
+    _user.value    = null
   }
 
-  const roleLabel = computed(() => ({ super_admin: '超級管理員', admin: '管理員' }[user.value?.role] || ''))
-  return { user, token, isLoggedIn, login, logout, switchUser, roleLabel }
+  // ── Error messages ────────────────────────────────────────────────────────
+
+  function _authMsg(err) {
+    const msg = err?.message || ''
+    if (/Invalid login credentials/i.test(msg)) return '帳號或密碼錯誤'
+    if (/rate.limit|too.many/i.test(msg))        return '嘗試次數過多，請稍後再試'
+    if (/Email not confirmed/i.test(msg))         return '請先至信箱完成驗證'
+    return msg || '登入失敗，請稍後再試'
+  }
+
+  return { user, isLoggedIn, roleLabel, init, login, logout }
 })

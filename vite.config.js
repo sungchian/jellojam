@@ -8,8 +8,8 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 export default defineConfig({
   plugins: [
     vue(),
-    AutoImport({ resolvers: [ElementPlusResolver()], imports: ['vue', 'vue-router', 'pinia'] }),
-    Components({ resolvers: [ElementPlusResolver()] }),
+    AutoImport({ resolvers: [ElementPlusResolver({ importStyle: false })], imports: ['vue', 'vue-router', 'pinia'] }),
+    Components({ resolvers: [ElementPlusResolver({ importStyle: false })] }),
   ],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
 })

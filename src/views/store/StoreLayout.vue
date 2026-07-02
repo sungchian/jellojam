@@ -7,8 +7,7 @@
 
         <!-- Logo -->
         <RouterLink to="/store" class="logo-link">
-          <span class="logo-mark">🍮</span>
-          <span class="logo-text">JelloJam</span>
+          <img src="/logo.svg" alt="JelloJam" class="logo-img" />
         </RouterLink>
 
         <!-- Search -->
@@ -36,20 +35,35 @@
           </button>
 
           <!-- Member -->
-          <RouterLink to="/store/member" class="icon-btn" active-class="" exact-active-class="">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
+          <RouterLink
+            :to="member.isLoggedIn ? `/store/member/${member.customer?.id}` : '/store/auth'"
+            class="icon-btn"
+            active-class=""
+            exact-active-class=""
+          >
+            <span class="member-avatar-wrap">
+              <img
+                v-if="member.isLoggedIn && member.avatarUrl"
+                :src="member.avatarUrl"
+                class="member-avatar-img"
+                referrerpolicy="no-referrer"
+                alt="avatar"
+              />
+              <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span v-if="member.isLoggedIn" class="member-online-dot"></span>
+            </span>
             <span class="icon-label">
-              {{ member.isLoggedIn ? member.displayName.slice(0,5) : t('nav.member') }}
+              {{ member.isLoggedIn ? member.displayName.slice(0,6) : t('nav.member') }}
             </span>
           </RouterLink>
 
           <!-- Cart -->
           <RouterLink to="/store/cart" class="icon-btn" active-class="" exact-active-class="">
-            <span class="cart-wrap">
+            <span class="cart-wrap" :class="{ 'cart-bounce': cartBounce }">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
@@ -69,26 +83,98 @@
     <!-- ══════════════ CATEGORY NAV ══════════════ -->
     <nav class="cat-nav">
       <div class="cat-nav-inner">
+
+        <!-- 商品分類 dropdown -->
+        <div class="cat-item cat-has-dropdown">
+          <RouterLink
+            to="/store/catalog"
+            class="cat-link"
+            active-class=""
+            exact-active-class=""
+            :class="{ 'cat-active': route.path === '/store/catalog' }"
+          >商品分類 <span class="cat-arrow">▾</span></RouterLink>
+
+          <div class="cat-dropdown">
+
+            <!-- ── Jellycat ── -->
+            <div class="drop-row drop-has-sub">
+              <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat' } }" class="drop-row-link">
+                <span>🐰 Jellycat</span>
+                <span class="drop-chevron">›</span>
+              </RouterLink>
+              <div class="drop-sub">
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'bunnies'    } }" class="drop-sub-item">🐰 兔兔專區</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'amuseables' } }" class="drop-sub-item">🎪 趣味系列</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'animals'    } }" class="drop-sub-item">🦁 動物系列</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'baby'       } }" class="drop-sub-item">🍼 寶寶專區</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'charms'     } }" class="drop-sub-item">🎒 背包吊飾專區</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'limited'    } }" class="drop-sub-item">✨ 限定專區</RouterLink>
+              </div>
+            </div>
+
+            <!-- ── Trader Joe's ── -->
+            <div class="drop-row drop-has-sub">
+              <RouterLink :to="{ path: '/store/catalog', query: { brand: 'traderjoes' } }" class="drop-row-link">
+                <span>🛍️ Trader Joe's</span>
+                <span class="drop-chevron">›</span>
+              </RouterLink>
+              <div class="drop-sub">
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'traderjoes', cat: '零食'  } }" class="drop-sub-item">🍪 零食</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'traderjoes', cat: '保養品' } }" class="drop-sub-item">🧴 保養品</RouterLink>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
         <RouterLink
-          to="/store/catalog"
+          :to="{ path: '/store/catalog', query: { sort: 'new' } }"
           class="cat-link"
           active-class=""
           exact-active-class=""
-          :class="{ 'cat-active': route.path === '/store/catalog' && !route.query.cat }"
-        >
-          {{ t('nav.allProducts') }}
-        </RouterLink>
+          :class="{ 'cat-active': route.path === '/store/catalog' && route.query.sort === 'new' }"
+        >新品推薦</RouterLink>
+
         <RouterLink
-          v-for="cat in displayCategories"
-          :key="cat"
-          :to="{ path: '/store/catalog', query: { cat } }"
+          :to="{ path: '/store/catalog', query: { stock: 'in_stock' } }"
           class="cat-link"
           active-class=""
           exact-active-class=""
-          :class="{ 'cat-active': route.query.cat === cat }"
-        >
-          {{ t(`categories.${cat}`, cat) }}
-        </RouterLink>
+          :class="{ 'cat-active': route.path === '/store/catalog' && route.query.stock === 'in_stock' }"
+        >現貨專區</RouterLink>
+
+        <RouterLink
+          to="/store/journal"
+          class="cat-link"
+          active-class=""
+          exact-active-class=""
+          :class="{ 'cat-active': route.path.startsWith('/store/journal') }"
+        >JelloJam日記</RouterLink>
+
+        <RouterLink
+          to="/store/membership"
+          class="cat-link"
+          active-class=""
+          exact-active-class=""
+          :class="{ 'cat-active': route.path === '/store/membership' }"
+        >會員制度</RouterLink>
+
+        <RouterLink
+          to="/store/news"
+          class="cat-link"
+          active-class=""
+          exact-active-class=""
+          :class="{ 'cat-active': route.path === '/store/news' }"
+        >最新消息</RouterLink>
+
+        <RouterLink
+          to="/store/order-tracking"
+          class="cat-link tracking-link"
+          active-class=""
+          exact-active-class=""
+          :class="{ 'cat-active': route.path === '/store/order-tracking' }"
+        >📦 訂單查詢</RouterLink>
+
       </div>
     </nav>
 
@@ -105,7 +191,9 @@
     <footer class="store-footer">
       <div class="footer-inner">
         <div class="footer-col brand-col">
-          <div class="footer-logo">🍮 JelloJam</div>
+          <div class="footer-logo">
+            <img src="/logo.svg" alt="JelloJam" class="footer-logo-img" />
+          </div>
           <p class="footer-tagline">{{ t('footer.tagline') }}</p>
           <a href="#" class="line-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -125,9 +213,10 @@
 
         <div class="footer-col">
           <div class="footer-col-title">{{ t('footer.service') }}</div>
-          <RouterLink to="/store/member" class="footer-link">{{ t('footer.account') }}</RouterLink>
-          <RouterLink to="/store/member" class="footer-link">{{ t('footer.points') }}</RouterLink>
-          <RouterLink to="/store/cart"   class="footer-link">{{ t('footer.cart') }}</RouterLink>
+          <RouterLink :to="member.isLoggedIn ? `/store/member/${member.customer?.id}` : '/store/auth'" class="footer-link">{{ t('footer.account') }}</RouterLink>
+          <RouterLink :to="member.isLoggedIn ? `/store/member/${member.customer?.id}` : '/store/auth'" class="footer-link">{{ t('footer.points') }}</RouterLink>
+          <RouterLink to="/store/cart"           class="footer-link">{{ t('footer.cart') }}</RouterLink>
+          <RouterLink to="/store/order-tracking" class="footer-link">📦 {{ t('footer.tracking') }}</RouterLink>
           <a href="#" class="footer-link">{{ t('footer.contact') }}</a>
         </div>
       </div>
@@ -138,27 +227,34 @@
     </footer>
 
   </div>
+
+  <!-- Toast notifications -->
+  <ToastContainer />
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore }        from '@/stores/cart'
-import { useStoreMemberStore } from '@/stores/storeMember'
+import { useStoreAuthStore } from '@/stores/storeAuth'
 import { useAppDataStore }     from '@/stores/appData'
+import ToastContainer          from '@/components/store/ToastContainer.vue'
 
 const { t, locale } = useI18n()
 const cart   = useCartStore()
-const member = useStoreMemberStore()
+const member = useStoreAuthStore()
 const store  = useAppDataStore()
 const router = useRouter()
 const route  = useRoute()
 
+// Force Chinese on every store entry — clears any stale English state
+locale.value = 'zh'
+localStorage.removeItem('jj_lang')
+
 // ── Language toggle ──────────────────────────────────────────────────────
 function toggleLang() {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
-  localStorage.setItem('jj_lang', locale.value)
 }
 
 // ── Scroll shadow ────────────────────────────────────────────────────────
@@ -167,7 +263,9 @@ const mounted    = ref(false)   // prevents enter animation on first load
 function onScroll() { isScrolled.value = window.scrollY > 4 }
 onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
-  store.fetchAll()
+  // 前台商店只需要商品目錄（走安全的 public_catalog RPC），不需要整個
+  // ERP 資料集 —— 訪客/顧客沒有權限讀 orders/customers 等表（RLS 已鎖）。
+  store.fetchPublicCatalog()
   // delay one tick so initial mount has no transition class
   nextTick(() => { mounted.value = true })
 })
@@ -182,8 +280,16 @@ function doSearch() {
   searchQuery.value = ''
 }
 
-// ── Category nav (top 10) ────────────────────────────────────────────────
-const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
+// ── Cart bounce animation ────────────────────────────────────────────────
+const cartBounce = ref(false)
+let bounceTimer = null
+watch(() => cart.totalQty, (newVal, oldVal) => {
+  if (newVal > oldVal) {
+    clearTimeout(bounceTimer)
+    cartBounce.value = true
+    bounceTimer = setTimeout(() => { cartBounce.value = false }, 600)
+  }
+})
 </script>
 
 <style scoped>
@@ -249,22 +355,24 @@ const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
 .logo-link {
   display: flex;
   align-items: center;
-  gap: 6px;
   text-decoration: none;
   flex-shrink: 0;
 }
-.logo-mark { font-size: 24px; line-height: 1; }
-.logo-text  {
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--jj-rose-dark) 0%, var(--jj-gold-dark) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  white-space: nowrap;
+.logo-img {
+  height: 40px;
+  width: auto;
+  display: block;
+  transition: opacity 0.15s, transform 0.15s;
 }
-.logo-link:hover .logo-text { opacity: 0.8; }
+.logo-link:hover .logo-img {
+  opacity: 0.85;
+  transform: scale(1.03);
+}
+.footer-logo-img {
+  height: 48px;
+  width: auto;
+  display: block;
+}
 
 /* Search */
 .search-wrap {
@@ -355,7 +463,41 @@ const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
 .icon-btn:hover { color: var(--jj-rose-dark); background: var(--jj-rose-pale); }
 .icon-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; }
 
+.member-avatar-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.member-avatar-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--jj-rose-light);
+}
+.member-online-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  border: 1.5px solid var(--jj-white);
+}
+
 .cart-wrap { position: relative; display: flex; }
+.cart-bounce { animation: cart-wiggle 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+@keyframes cart-wiggle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  15%       { transform: rotate(-18deg) scale(1.2); }
+  30%       { transform: rotate(14deg) scale(1.15); }
+  45%       { transform: rotate(-10deg) scale(1.1); }
+  60%       { transform: rotate(7deg) scale(1.05); }
+  75%       { transform: rotate(-4deg) scale(1.02); }
+  90%       { transform: rotate(2deg) scale(1); }
+}
 .cart-badge {
   position: absolute;
   top: -7px;
@@ -381,11 +523,8 @@ const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
   z-index: 190;
   background: var(--jj-white);
   border-bottom: 1px solid var(--jj-border);
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  /* overflow-x: auto を外す — dropdownが clip される */
 }
-.cat-nav::-webkit-scrollbar { display: none; }
 
 .cat-nav-inner {
   max-width: 1240px;
@@ -394,6 +533,12 @@ const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
   align-items: center;
   padding: 0 20px;
   gap: 2px;
+}
+
+.cat-item {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .cat-link {
@@ -406,12 +551,118 @@ const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
   border-bottom: 2px solid transparent;
   transition: color 0.15s, border-color 0.15s;
   flex-shrink: 0;
+  cursor: pointer;
 }
 .cat-link:hover { color: var(--jj-rose-dark); }
+/* Tracking link — subtle visual distinction */
+.tracking-link { opacity: .85; }
+.tracking-link:hover { opacity: 1; }
 .cat-active {
   color: var(--jj-rose-dark);
   border-bottom-color: var(--jj-rose-dark);
   font-weight: 700;
+}
+
+.cat-arrow {
+  font-size: 10px;
+  margin-left: 2px;
+  opacity: 0.6;
+  transition: transform 0.15s;
+}
+.cat-has-dropdown:hover .cat-arrow {
+  transform: rotate(180deg);
+}
+
+/* Dropdown panel */
+.cat-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 0;
+  background: var(--jj-white);
+  border: 1px solid var(--jj-border);
+  border-radius: 14px;
+  padding: 8px;
+  min-width: 200px;
+  box-shadow: var(--jj-shadow-lg);
+  z-index: 300;
+  flex-direction: column;
+  gap: 2px;
+}
+.cat-has-dropdown:hover .cat-dropdown {
+  display: flex;
+}
+
+/* First-level dropdown rows */
+.drop-row {
+  position: relative;
+}
+.drop-row-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--jj-text);
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.drop-row:hover > .drop-row-link {
+  background: var(--jj-rose-pale);
+  color: var(--jj-rose-dark);
+}
+.drop-chevron {
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.12s;
+}
+.drop-row:hover .drop-chevron { opacity: 1; }
+
+/* Sub-menu flyout */
+.drop-sub {
+  display: none;
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 0;
+  min-width: 160px;
+  background: var(--jj-white);
+  border: 1px solid var(--jj-border);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: var(--jj-shadow-lg);
+  z-index: 400;
+  flex-direction: column;
+  gap: 2px;
+}
+.drop-has-sub:hover .drop-sub {
+  display: flex;
+}
+/* Bridge gap between row and sub (prevents hover loss when crossing gap) */
+.drop-has-sub::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 0;
+  width: 6px;
+  height: 100%;
+}
+.drop-sub-item {
+  display: block;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--jj-text);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.drop-sub-item:hover {
+  background: var(--jj-rose-pale);
+  color: var(--jj-rose-dark);
 }
 
 /* ══════════════ MAIN ══════════════ */
@@ -443,11 +694,7 @@ const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
 }
 
 .footer-logo {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--jj-gold);
   margin-bottom: 10px;
-  letter-spacing: -0.3px;
 }
 .footer-tagline {
   font-size: 13px;
@@ -502,14 +749,13 @@ const displayCategories = computed(() => store.jellycatCategories.slice(0, 10))
 @media (max-width: 900px) {
   .header-inner { padding: 0 14px; gap: 8px; }
   .search-wrap  { max-width: 340px; }
-  .logo-text    { font-size: 17px; }
+  .logo-img     { height: 34px; }
   .footer-inner { grid-template-columns: 1fr 1fr; gap: 28px; }
 }
 
 @media (max-width: 600px) {
   .header-inner { gap: 6px; padding: 0 10px; }
-  .logo-text    { display: none; }
-  .logo-mark    { font-size: 28px; }
+  .logo-img     { height: 30px; }
   .search-wrap  { max-width: none; }
   .icon-label   { display: none; }
   .lang-toggle  { padding: 4px 8px; font-size: 11px; }

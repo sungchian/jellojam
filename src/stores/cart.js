@@ -30,7 +30,7 @@ export const useCartStore = defineStore('cart', () => {
   )
 
   const subtotal = computed(() =>
-    items.value.reduce((sum, item) => sum + item.price * item.qty, 0)
+    items.value.reduce((sum, item) => sum + (item.price || 0) * item.qty, 0)
   )
 
   const itemCount = computed(() => items.value.length)
@@ -48,23 +48,34 @@ export const useCartStore = defineStore('cart', () => {
    * @param {Object} product - must contain { id, product_name, price, stock, category_zh }
    * @param {number} qty - quantity to add (default 1)
    */
+  // Returns: 'added' | 'capped' | 'out_of_stock'
   function addItem(product, qty = 1) {
-    const existing = items.value.find((i) => i.id === product.id)
+    const price  = product.store_price   ?? product.price   ?? 0
+    // Never fall back to a large default: an unknown stock must be treated as 0
+    // so we don't let customers order phantom inventory. Final authority is the
+    // server-side stock check in create_order (see 20260701_p1_hardening.sql).
+    const stock  = Number(product.current_stock ?? product.stock ?? 0)
+    const catZh  = product.jellycat_category_zh ?? product.category_zh ?? ''
 
+    if (stock <= 0) return 'out_of_stock'
+
+    const existing = items.value.find((i) => i.id === product.id)
     if (existing) {
+      if (existing.qty >= existing.stock) return 'capped'
       existing.qty = Math.min(existing.qty + qty, existing.stock)
     } else {
       items.value.push({
         id: product.id,
         product_name: product.product_name,
-        price: product.price,
-        qty: Math.min(qty, product.stock),
-        stock: product.stock,
-        category_zh: product.category_zh ?? '',
+        price,
+        qty: Math.min(qty, stock),
+        stock,
+        category_zh: catZh,
       })
     }
 
     persist()
+    return 'added'
   }
 
   /**

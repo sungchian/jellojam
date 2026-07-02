@@ -19,7 +19,7 @@
           >{{ t.label }}</button>
         </div>
         <el-button class="refresh-btn" @click="handleRefresh" :loading="store.loading">
-          <el-icon><Refresh /></el-icon>
+          <Refresh :size="14" style="margin-right:5px;vertical-align:-2px" />
           刷新數據
         </el-button>
       </div>
@@ -55,7 +55,7 @@
 
       <!-- Time Range Banner -->
       <div class="range-banner">
-        <el-icon size="13" style="color:var(--color-primary)"><Calendar /></el-icon>
+        <Calendar :size="13" style="color:var(--color-primary)" />
         <span>{{ rangeLabel }} 數據</span>
         <span class="range-count">{{ filteredOrders.length }} 筆訂單</span>
       </div>
@@ -69,7 +69,7 @@
           :style="{ '--kpi-color': card.color, '--kpi-bg': card.bg }"
         >
           <div class="kpi-icon-wrap" :style="{ background: card.bg }">
-            <el-icon size="18" :style="{ color: card.color }"><component :is="card.icon" /></el-icon>
+            <component :is="card.icon" :size="18" :style="{ color: card.color }" />
           </div>
           <div class="kpi-body">
             <div class="kpi-value">{{ card.value }}</div>
@@ -132,7 +132,7 @@
           <template #header>
             <div class="card-header-row">
               <span class="card-title">最新訂單</span>
-              <RouterLink to="/orders" class="view-all">查看全部 <el-icon style="vertical-align:-2px"><ArrowRight /></el-icon></RouterLink>
+              <RouterLink to="/orders" class="view-all">查看全部 <ArrowRight :size="13" style="vertical-align:-2px" /></RouterLink>
             </div>
           </template>
           <el-empty v-if="!recentFiltered.length" description="暫無訂單" :image-size="60" />
@@ -187,7 +187,7 @@
               </div>
             </template>
             <div v-if="!stats.lowStockProducts.length" class="all-good">
-              <el-icon size="18" style="color:#10b981"><CircleCheck /></el-icon>
+              <CheckCircle :size="18" style="color:#10b981" />
               庫存正常
             </div>
             <div class="low-stock-list" v-else>
@@ -221,9 +221,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Refresh, ArrowRight, CircleCheck, Calendar } from '@element-plus/icons-vue'
+import {
+  RefreshCw as Refresh, ArrowRight, CheckCircle, Calendar,
+  List, TrendingUp, ShoppingCart, DollarSign, Users, AlertTriangle,
+} from 'lucide-vue-next'
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { useAuthStore } from '@/stores/auth'
@@ -345,38 +348,38 @@ const kpiCards = computed(() => [
   {
     label: '篩選訂單',
     value: filteredOrders.value.length,
-    icon: 'List', bg: '#eef2ff', color: '#6366f1',
+    icon: List, bg: '#eef2ff', color: '#6366f1',
     sub: `待出貨 ${filteredPending.value}`,
   },
   {
     label: '篩選銷售額',
     value: `NT$ ${Math.round(filteredRevenue.value).toLocaleString()}`,
-    icon: 'TrendCharts', bg: '#ecfdf5', color: '#10b981',
+    icon: TrendingUp, bg: '#ecfdf5', color: '#10b981',
     sub: rangeLabel.value,
   },
   {
     label: '採購成本',
     value: `NT$ ${Math.round(store.totalCost).toLocaleString()}`,
-    icon: 'ShoppingCart', bg: '#fef2f2', color: '#ef4444',
+    icon: ShoppingCart, bg: '#fef2f2', color: '#ef4444',
     sub: null,
   },
   {
     label: '毛利潤',
     value: `NT$ ${Math.abs(Math.round(store.totalProfit)).toLocaleString()}`,
-    icon: 'Money', bg: store.totalProfit >= 0 ? '#ecfdf5' : '#fef2f2',
+    icon: DollarSign, bg: store.totalProfit >= 0 ? '#ecfdf5' : '#fef2f2',
     color: store.totalProfit >= 0 ? '#10b981' : '#ef4444',
     sub: `${profitMargin.value}% 毛利率`,
   },
   {
     label: '客戶數',
     value: stats.value.totalCustomers,
-    icon: 'UserFilled', bg: '#f0f9ff', color: '#3b82f6',
+    icon: Users, bg: '#f0f9ff', color: '#3b82f6',
     sub: 'Line 用戶',
   },
   {
     label: '低庫存',
     value: stats.value.lowStockCount,
-    icon: 'Warning', bg: '#fffbeb', color: '#f59e0b',
+    icon: AlertTriangle, bg: '#fffbeb', color: '#f59e0b',
     sub: `共 ${stats.value.totalProducts} SKU`,
   },
 ])
@@ -536,12 +539,22 @@ async function handleRefresh() {
   initAllCharts()
 }
 
+const onResize = () => {
+  weekInst?.resize(); statusInst?.resize(); topInst?.resize(); expInst?.resize()
+}
+
 onMounted(async () => {
   await store.fetchAll()
   initAllCharts()
-  window.addEventListener('resize', () => {
-    weekInst?.resize(); statusInst?.resize(); topInst?.resize(); expInst?.resize()
-  })
+  window.addEventListener('resize', onResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  weekInst?.dispose(); weekInst = null
+  statusInst?.dispose(); statusInst = null
+  topInst?.dispose(); topInst = null
+  expInst?.dispose(); expInst = null
 })
 </script>
 

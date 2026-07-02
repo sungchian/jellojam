@@ -127,11 +127,16 @@
         </el-table-column>
 
         <!-- 操作 -->
-        <el-table-column label="操作" :width="COL.actions" align="center">
+        <el-table-column label="操作" :width="COL.actions" align="center" class-name="col-action">
           <template #default="{ row }">
-            <RouterLink :to="`/customers/${row.id}`">
-              <el-button text type="primary" size="small">查看</el-button>
-            </RouterLink>
+            <el-button
+              size="small"
+              type="primary"
+              plain
+              :icon="Search"
+              @click="router.push(`/customers/${row.id}`)"
+              class="view-btn"
+            />
           </template>
         </el-table-column>
       </el-table>
@@ -149,8 +154,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
-import { Search, Download, Refresh } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { Search, Download, RefreshCw as Refresh } from 'lucide-vue-next'
 import { useAppDataStore } from '@/stores/appData'
 
 // ── Column widths (single source of truth) ──────────────────
@@ -162,9 +167,10 @@ const COL = {
   total_spent:     132,
   first_contact:   160,
   last_contact:    160,
-  actions:          80,
+  actions:          64,
 }
 
+const router = useRouter()
 const store = useAppDataStore()
 
 const tableRef            = ref(null)
@@ -323,4 +329,25 @@ onMounted(() => store.fetchAll())
 .total-spent { font-weight: 600; font-family: var(--font-mono); color: var(--color-success); font-size: 12px; }
 .date-text { font-size: 11px; color: var(--color-text-secondary); }
 .filter-hint { font-size: 12px; color: var(--color-text-muted); }
+
+:deep(.view-btn) {
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+}
+:deep(.view-btn:hover) {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: #fff !important;
+  transform: scale(1.08) !important;
+}
+:deep(.view-btn .lucide) {
+  width: 14px !important;
+  height: 14px !important;
+}
 </style>

@@ -61,20 +61,28 @@
     <!-- Batch action bar -->
     <transition name="slide-down">
       <div v-if="selection.length" class="batch-bar">
-        <el-icon><Select /></el-icon>
+        <Select :size="15" />
         <span>已選 <strong>{{ selection.length }}</strong> 筆</span>
         <el-button size="small" type="success" plain @click="batchUpdate('已出貨')">批量設為已出貨</el-button>
         <el-button size="small" type="primary" plain @click="batchUpdate('台灣待出貨')">台灣待出貨</el-button>
+        <el-button
+          v-if="selection.length >= 2"
+          size="small"
+          type="warning"
+          :icon="Connection"
+          @click="goMerge"
+        >併單 ({{ selection.length }})</el-button>
         <el-button size="small" @click="selection = []">取消選取</el-button>
       </div>
     </transition>
 
     <!-- Table -->
-    <el-card v-loading="store.loading" element-loading-text="載入訂單中…">
+    <el-card v-loading="store.loading || deletedLoading" element-loading-text="載入訂單中…">
       <el-table
         ref="orderTableRef"
         border
         :data="paginated"
+        :row-class-name="activeStatus === 'deleted' ? 'deleted-row' : ''"
         @selection-change="s => selection = s"
         @header-dragend="onHeaderDragend"
         @sort-change="onSortChange"
@@ -218,12 +226,39 @@
           </template>
         </el-table-column>
 
-        <!-- 操作 -->
-        <el-table-column label="操作" :min-width="colWidths['edit']" fixed="right" align="center">
+        <!-- 刪除時間（只在已刪除 tab 顯示） -->
+        <el-table-column
+          v-if="activeStatus === 'deleted'"
+          label="刪除時間"
+          width="150"
+          align="center"
+        >
           <template #default="{ row }">
-            <RouterLink :to="`/orders/${row.id}`">
-              <el-button text type="primary" size="small">查看</el-button>
-            </RouterLink>
+            <span class="date-text deleted-time">{{ formatDeletedAt(row.deleted_at) }}</span>
+          </template>
+        </el-table-column>
+
+        <!-- 操作 -->
+        <el-table-column label="操作" :width="colWidths['edit']" fixed="right" align="center" class-name="col-action">
+          <template #default="{ row }">
+            <template v-if="activeStatus !== 'deleted'">
+              <el-button
+                size="small" type="primary" plain
+                :icon="Edit" class="edit-btn"
+                @click="router.push(`/orders/${row.id}`)"
+              />
+              <el-button
+                size="small" type="danger" plain
+                :icon="Delete" class="del-btn"
+                @click="softDelete(row)"
+              />
+            </template>
+            <el-button
+              v-else
+              size="small" type="warning" plain
+              :icon="Restore" class="restore-btn"
+              @click="restoreOrder(row)"
+            />
           </template>
         </el-table-column>
       </el-table>
@@ -231,7 +266,7 @@
       <el-pagination
         v-model:current-page="page"
         v-model:page-size="pageSize"
-        :total="sortedFiltered.length"
+        :total="paginationTotal"
         :page-sizes="[20, 50, 100]"
         layout="total, sizes, prev, pager, next"
       />
@@ -413,30 +448,31 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Search, Download, Refresh, Select, Setting, Plus, Close, Delete } from '@element-plus/icons-vue'
-import { useAppDataStore } from '@/stores/appData'
+import { RouterLink, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Download, RefreshCw as Refresh, CheckSquare2 as Select, Settings as Setting, Plus, X as Close, Trash2 as Delete, GitMerge as Connection, SquarePen as Edit, RotateCcw as Restore } from 'lucide-vue-next'
+import { useAppDataStore, csvEscape } from '@/stores/appData'
 import { useAuthStore } from '@/stores/auth'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase'
 
-const store = useAppDataStore()
-const auth  = useAuthStore()
+const store  = useAppDataStore()
+const auth   = useAuthStore()
+const router = useRouter()
 
 // ── Column definitions ─────────────────────────────────────────
 // widths tuned for 13px font, Chinese glyphs ~14px wide, padding 14px×2=28px
 const COLUMNS = [
-  { key: 'order_id',       label: '訂單編號', defaultWidth: 190 }, // "JJ-2024-001" 11mono chars
-  { key: 'customer',       label: '客戶',     defaultWidth: 130  }, // 4 CJK chars
+  { key: 'order_id',       label: '訂單編號', defaultWidth: 150 }, // "JJ-2024-001" 11mono chars
+  { key: 'customer',       label: '客戶',     defaultWidth: 110  }, // 4 CJK chars
   { key: 'group_name',     label: '群組',     defaultWidth: 96  }, // el-tag
   { key: 'product_name',   label: '商品名稱', defaultWidth: 120 },
-  { key: 'selling_price',  label: '售價',     defaultWidth: 130 }, // "NT$ 12,345" 
+  { key: 'selling_price',  label: '售價',     defaultWidth: 120 }, // "NT$ 12,345" 
   { key: 'payment_amount', label: '匯款',     defaultWidth: 120 }, // same
   { key: 'order_status',   label: '狀態',     defaultWidth: 130 }, // badge "台灣待出貨"
   { key: 'sales_week',     label: '週次',     defaultWidth: 80 }, // "SW-2026-01" 10 chars + padding
   { key: 'sales_date',     label: '下單日',   defaultWidth: 120 }, // "2026-01-01" 10 chars + padding
   { key: 'note',           label: '備註',     defaultWidth: 160  }, // flexible (min-width)
-  { key: 'edit',           label: '操作',     defaultWidth: 50 }, // "查看" button
+  { key: 'edit',           label: '操作',     defaultWidth: 90 }, // icon buttons
 ]
 
 // ── Per-user persistence ───────────────────────────────────────
@@ -517,8 +553,9 @@ function onFilterChange(filters) {
   page.value = 1
 }
 
-const orders = ref([])
-watch(() => store.mockSales, v => { orders.value = v.map(s => ({ ...s })) }, { immediate: true })
+// Read directly from the store — the computed re-runs automatically when
+// ordersRaw / itemsRaw change. No local copy, no watch, no blank-on-mount.
+const orders = computed(() => store.mockSales)
 
 const salesWeeks = computed(() => [...new Set(orders.value.map(o => o.sales_week).filter(Boolean))].sort())
 
@@ -528,6 +565,7 @@ const statusTabs = computed(() => [
     label: cfg.label, value: key,
     count: orders.value.filter(o => o.order_status === key).length,
   })),
+  { label: '已刪除', value: 'deleted', count: deletedOrders.value.length },
 ])
 
 const pendingCount = computed(() =>
@@ -535,6 +573,8 @@ const pendingCount = computed(() =>
 )
 
 const filtered = computed(() => orders.value.filter(o => {
+  // 已併單 只在自己的 tab 出現，其他 tab（含全部）一律隱藏
+  if (o.order_status === '已併單' && activeStatus.value !== '已併單') return false
   if (activeStatus.value !== 'all' && o.order_status !== activeStatus.value) return false
   if (filterGroup.value && o.group_name !== filterGroup.value) return false
   if (filterWeek.value && o.sales_week !== filterWeek.value) return false
@@ -565,9 +605,14 @@ const sortedFiltered = computed(() => {
 })
 
 const paginated = computed(() => {
+  const list  = activeStatus.value === 'deleted' ? deletedOrders.value : sortedFiltered.value
   const start = (page.value - 1) * pageSize.value
-  return sortedFiltered.value.slice(start, start + pageSize.value)
+  return list.slice(start, start + pageSize.value)
 })
+
+const paginationTotal = computed(() =>
+  activeStatus.value === 'deleted' ? deletedOrders.value.length : sortedFiltered.value.length
+)
 
 function resetFilter() {
   search.value = ''
@@ -580,15 +625,85 @@ function resetFilter() {
   orderTableRef.value?.clearSort()
 }
 
+// ── 軟刪除 / 復原 ───────────────────────────────────────────────
+const deletedOrders  = ref([])
+const deletedLoading = ref(false)
+
+async function fetchDeletedOrders() {
+  deletedLoading.value = true
+  const { data } = await supabase
+    .from('orders')
+    .select('*')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+  deletedOrders.value = data || []
+  deletedLoading.value = false
+}
+
+async function softDelete(row) {
+  try {
+    await ElMessageBox.confirm(
+      `確定要刪除訂單「${row.order_id}」嗎？\n刪除後可在「已刪除」頁面復原。`,
+      '刪除確認',
+      { confirmButtonText: '確定刪除', cancelButtonText: '取消', type: 'warning' }
+    )
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('orders')
+      .update({ deleted_at: now })
+      .eq('id', row.id)
+    if (error) throw error
+    // 從本地快取移除，畫面立即更新
+    const idx = store.ordersRaw.findIndex(o => o.id === row.id)
+    if (idx !== -1) store.ordersRaw.splice(idx, 1)
+    ElMessage.success('訂單已刪除，可至「已刪除」分頁復原')
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('刪除失敗：' + (e?.message || ''))
+  }
+}
+
+async function restoreOrder(row) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ deleted_at: null })
+    .eq('id', row.id)
+  if (error) { ElMessage.error('復原失敗'); return }
+  // 加回本地快取
+  store.ordersRaw.push({ ...row, deleted_at: null })
+  deletedOrders.value = deletedOrders.value.filter(o => o.id !== row.id)
+  ElMessage.success(`訂單「${row.order_no}」已復原`)
+}
+
+function formatDeletedAt(ts) {
+  if (!ts) return '—'
+  return new Date(ts).toLocaleString('zh-TW', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+}
+
+// 切換到已刪除 tab 時自動載入
+watch(activeStatus, val => {
+  if (val === 'deleted') fetchDeletedOrders()
+  page.value = 1
+})
+
+function goMerge() {
+  const ids = selection.value.map(o => o.id).filter(Boolean).join(',')
+  router.push({ path: '/orders/merge', query: { ids } })
+}
+
 async function batchUpdate(status) {
   const targets = selection.value.map(o => o.order_id).filter(Boolean)
-  for (const orderId of targets) {
-    await store.updateOrderStatus(orderId, status)
-    const local = orders.value.find(x => x.order_id === orderId)
-    if (local) { local.order_status = status; local.statusConfig = store.ORDER_STATUSES[status] }
+  const results = await Promise.all(targets.map(id => store.updateOrderStatus(id, status)))
+  const ok   = results.filter(Boolean).length
+  const fail = results.length - ok
+  if (fail === 0) {
+    ElMessage.success(`已批量更新 ${ok} 筆訂單`)
+    selection.value = []
+  } else {
+    ElMessage.warning(`更新完成：成功 ${ok} 筆，失敗 ${fail} 筆（失敗項目仍保留選取）`)
+    // Keep the failed rows selected so staff can retry.
+    const failedIds = new Set(targets.filter((_, i) => !results[i]))
+    selection.value = selection.value.filter(o => failedIds.has(o.order_id))
   }
-  ElMessage.success(`已批量更新 ${selection.value.length} 筆訂單`)
-  selection.value = []
 }
 
 function exportCSV() {
@@ -597,7 +712,7 @@ function exportCSV() {
     o.order_id, o.customer, o.product_name, o.selling_price || '',
     o.payment_amount || '', o.order_status, o.sales_week || '', o.sales_date || '', o.note || '',
   ])
-  const csv = [header, ...rows].map(r => r.join(',')).join('\n')
+  const csv = [header, ...rows].map(r => r.map(csvEscape).join(',')).join('\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
@@ -607,10 +722,21 @@ function exportCSV() {
 
 // ── 新增訂單 ────────────────────────────────────────────────────────
 
+// Local calendar date (YYYY-MM-DD) — NOT toISOString(), which is UTC and rolls
+// over to "tomorrow" for North-America staff in the evening.
+function todayLocal() {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 // 週次從日期自動計算（純數字 YYYYWW，如 202617）
 function dateToWeek(dateStr) {
   if (!dateStr) return ''
-  const d = new Date(dateStr)
+  // Parse the 'YYYY-MM-DD' as a LOCAL date (component form), so a negative UTC
+  // offset can't shift 2026-01-01 back to 2025.
+  const [y, m, day] = String(dateStr).split('-').map(Number)
+  const d = new Date(y, (m || 1) - 1, day || 1)
   const year = d.getFullYear()
   const startOfYear = new Date(year, 0, 1)
   const weekNo = Math.ceil(((d - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7)
@@ -619,7 +745,7 @@ function dateToWeek(dateStr) {
 
 // Order No 前端產生（格式與 Google Sheets 一致）
 function genOrderNo(dateStr) {
-  const d = (dateStr || new Date().toISOString().slice(0, 10)).replace(/-/g, '')
+  const d = (dateStr || todayLocal()).replace(/-/g, '')
   const r = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
   return `ORD${d}${r}`
 }
@@ -630,7 +756,7 @@ const newOrderError   = ref('')
 const newOrderFormRef = ref(null)
 
 const newOrderForm = reactive({
-  sales_date:      new Date().toISOString().slice(0, 10),
+  sales_date:      todayLocal(),
   sales_week:      '',
   customer_id:     '',
   customer_name:   '',
@@ -711,8 +837,8 @@ function removeItem(idx)  { if (orderItems.value.length > 1) orderItems.value.sp
 
 function openNewOrder() {
   Object.assign(newOrderForm, {
-    sales_date: new Date().toISOString().slice(0, 10),
-    sales_week: dateToWeek(new Date().toISOString().slice(0, 10)),
+    sales_date: todayLocal(),
+    sales_week: dateToWeek(todayLocal()),
     customer_id: '', customer_name: '', logistics_name: '',
     group_name: '', status: '已填表單', note: '',
     payment_amount: 0, addon_amount: 0, fee_711: 0,
@@ -765,12 +891,19 @@ async function submitNewOrder() {
     if (orderErr) throw new Error(`訂單建立失敗：${orderErr.message}`)
 
     // Step 2：Batch INSERT order_items
-    const itemsPayload = orderItems.value.map(i => ({
-      order_id:      orderRow.id,
-      product_name:  i.product_name.trim(),
-      qty:           i.qty           ?? 1,
-      selling_price: i.selling_price || null,
-    }))
+    // Resolve product_id by name so sold-qty / stock / category joins in
+    // appData.mockInventory actually match (they key on product_id).
+    const itemsPayload = orderItems.value.map(i => {
+      const name = i.product_name.trim()
+      const product = store.mockInventory.find(p => p.product_name === name)
+      return {
+        order_id:      orderRow.id,
+        product_id:    product?.id ?? null,
+        product_name:  name,
+        qty:           i.qty           ?? 1,
+        selling_price: i.selling_price || null,
+      }
+    })
 
     const { data: insertedItems, error: itemsErr } = await supabase
       .from('order_items')
@@ -778,6 +911,30 @@ async function submitNewOrder() {
       .select()
 
     if (itemsErr) throw new Error(`商品項目寫入失敗：${itemsErr.message}`)
+
+    // Step 2.5：Insert inventory_transactions（P0-4）
+    // 以商品名稱從 mockInventory 查出 product_id；名稱不符合的略過（不阻擋建單）
+    const invRows = orderItems.value
+      .map(i => {
+        const product = store.mockInventory.find(p => p.product_name === i.product_name.trim())
+        if (!product?.id) return null
+        return {
+          product_id:  product.id,
+          order_id:    orderRow.id,
+          type:        'sale',
+          quantity:    -(i.qty ?? 1),
+          note:        `訂單 ${orderNo}`,
+          created_by:  auth.user?.id || null,
+        }
+      })
+      .filter(Boolean)
+
+    if (invRows.length) {
+      const { error: invErr } = await supabase
+        .from('inventory_transactions')
+        .insert(invRows)
+      if (invErr) console.warn('[inventory] 庫存記錄失敗, code:', invErr?.code)
+    }
 
     // Step 3：patch local store（立即顯示，不需 refresh）
     store.ordersRaw.push(orderRow)
@@ -788,7 +945,7 @@ async function submitNewOrder() {
 
   } catch (err) {
     newOrderError.value = err.message
-    console.error('[新增訂單]', err)
+    console.error('[新增訂單] code:', err?.code)
   } finally {
     newOrderSaving.value = false
   }
@@ -932,4 +1089,64 @@ onMounted(() => store.fetchAll())
 }
 
 .date-text { font-size: 11px; color: var(--color-text-secondary); }
+
+:deep(.col-action .cell) {
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+:deep(.edit-btn),
+:deep(.del-btn),
+:deep(.restore-btn) {
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+}
+/* Edit → 紫 */
+:deep(.edit-btn) {
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+}
+:deep(.edit-btn:hover) {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  transform: scale(1.08) !important;
+}
+/* Delete → 紅 */
+:deep(.del-btn) {
+  border-color: var(--color-danger) !important;
+  color: var(--color-danger) !important;
+}
+:deep(.del-btn:hover) {
+  background: var(--color-danger) !important;
+  color: #fff !important;
+  transform: scale(1.08) !important;
+}
+/* Restore → 橘 */
+:deep(.restore-btn) {
+  border-color: #f59e0b !important;
+  color: #f59e0b !important;
+}
+:deep(.restore-btn:hover) {
+  background: #f59e0b !important;
+  color: #fff !important;
+  transform: scale(1.08) !important;
+}
+/* 已刪除列：灰化 */
+:deep(.deleted-row td) {
+  opacity: 0.55;
+}
+.deleted-time {
+  color: var(--color-danger) !important;
+  font-size: 11px;
+}
+
+:deep(.el-table) {
+  --el-table-fixed-right-column: none;
+  --el-table-fixed-left-column: none;
+}
 </style>

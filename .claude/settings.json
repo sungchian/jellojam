@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm run preview)",
+      "Bash(npm install *)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add src/*)",
+      "Bash(git commit*)",
+      "Bash(supabase functions deploy*)"
+    ],
+    "deny": [
+      "Bash(git add .env*)",
+      "Bash(git add *.env*)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const a=process.env.HOOK_TOOL_INPUT||'';if(/git add .*(\\..env|env\\.)/.test(a)){console.error('\\u26d4  BLOCKED: .env 檔案不可加入 git commit！');process.exit(2);}\"",
+            "description": "Block committing .env files"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const f=process.env.HOOK_TOOL_INPUT||'';if(/src\\/stores\\/(storeAuth|auth)\\.js/.test(f)){console.log('\\u26a0\\ufe0f  提醒：修改了 auth 相關檔案，記得執行 /security 檢查。');}\"",
+            "description": "Remind to security-check auth files after edits"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -45,7 +45,7 @@
       </el-card>
       <el-card v-else class="cat-hint-card">
         <div class="hint-content">
-          <el-icon size="48" style="color:#c7d2fe"><Grid /></el-icon>
+          <Grid :size="48" style="color:#c7d2fe" />
           <p>點選左側分類以編輯<br>或新增分類結構</p>
         </div>
       </el-card>
@@ -56,7 +56,7 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Grid } from '@element-plus/icons-vue'
+import { Plus, SquarePen as Edit, Trash2 as Delete, LayoutGrid as Grid } from 'lucide-vue-next'
 
 const categories = ref([
   { id: 1, name: 'Jellycat', icon: '🐰', count: 42, order: 1, seoTitle: '', children: [

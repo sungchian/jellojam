@@ -1,7 +1,7 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  // ── Public admin login ───────────────────────────────────────────────────────
+  // ── Public admin login ─────────────────────────────────────────────────────
   {
     path: '/login',
     name: 'Login',
@@ -9,14 +9,16 @@ const routes = [
     meta: { public: true },
   },
 
-  // ── Admin / ERP (token-protected) ───────────────────────────────────────────
+  // ── Admin / ERP (token-protected) ──────────────────────────────────────────
+  // Root redirects to /store; ERP staff navigate directly to /dashboard
   {
     path: '/',
     component: () => import('@/components/layout/MainLayout.vue'),
-    redirect: '/dashboard',
+    redirect: '/store',
     children: [
       { path: 'dashboard',         name: 'Dashboard',      component: () => import('@/views/dashboard/Dashboard.vue'),        meta: { title: '儀表板' } },
       { path: 'orders',            name: 'Orders',         component: () => import('@/views/orders/OrderList.vue'),           meta: { title: '訂單管理' } },
+      { path: 'orders/merge',      name: 'MergeOrders',    component: () => import('@/views/orders/MergeOrders.vue'),          meta: { title: '併單作業' } },
       { path: 'orders/:id',        name: 'OrderDetail',    component: () => import('@/views/orders/OrderDetail.vue'),         meta: { title: '訂單詳情' } },
       { path: 'products',          name: 'Products',       component: () => import('@/views/products/ProductList.vue'),       meta: { title: '商品管理' } },
       { path: 'products/add',      name: 'ProductAdd',     component: () => import('@/views/products/ProductForm.vue'),       meta: { title: '新增商品' } },
@@ -27,14 +29,18 @@ const routes = [
       { path: 'customers/:id',     name: 'CustomerDetail', component: () => import('@/views/customers/CustomerDetail.vue'),   meta: { title: '客戶詳情' } },
       { path: 'finance',           name: 'Finance',        component: () => import('@/views/finance/Finance.vue'),            meta: { title: '財務管理' } },
       { path: 'settings',          name: 'Settings',       component: () => import('@/views/settings/Settings.vue'),         meta: { title: '系統設定' } },
+      { path: 'journal',           name: 'JournalList',    component: () => import('@/views/journal/JournalList.vue'),        meta: { title: '文章管理' } },
+      { path: 'journal/new',       name: 'JournalNew',     component: () => import('@/views/journal/JournalForm.vue'),        meta: { title: '新增文章' } },
+      { path: 'journal/:id',       name: 'JournalEdit',    component: () => import('@/views/journal/JournalForm.vue'),        meta: { title: '編輯文章' } },
     ],
   },
 
-  // ── Storefront (public — no admin token needed) ──────────────────────────────
+  // ── Storefront ─────────────────────────────────────────────────────────────
   {
     path: '/store',
     component: () => import('@/views/store/StoreLayout.vue'),
     children: [
+      // Public store pages
       {
         path: '',
         name: 'StoreHome',
@@ -65,32 +71,144 @@ const routes = [
         component: () => import('@/views/store/StoreCheckout.vue'),
         meta: { public: true, store: true, title: '結帳' },
       },
+
+      // Member page — :id is the customer's UUID
       {
-        path: 'member',
+        path: 'member/:id',
         name: 'StoreMember',
         component: () => import('@/views/store/StoreMember.vue'),
-        meta: { public: true, store: true, title: '會員中心' },
+        meta: { store: true, requireAuth: true, title: '會員中心' },
+      },
+
+      // Auth flow pages
+      {
+        path: 'auth',
+        name: 'StoreAuth',
+        component: () => import('@/views/store/StoreLogin.vue'),
+        meta: { public: true, store: true, title: '登入' },
       },
       {
-        path: 'member/orders',
-        name: 'StoreMemberOrders',
-        redirect: '/store/member',
-        meta: { public: true, store: true, title: '我的訂單' },
+        path: 'auth/callback',
+        name: 'StoreAuthCallback',
+        component: () => import('@/views/store/StoreAuthCallback.vue'),
+        meta: { public: true, store: true, title: '登入中' },
+      },
+
+      // Journal / 日記
+      {
+        path: 'membership',
+        name: 'StoreMembership',
+        component: () => import('@/views/store/StoreMembership.vue'),
+        meta: { public: true, store: true, title: '會員制度' },
+      },
+      {
+        path: 'news',
+        name: 'StoreNews',
+        component: () => import('@/views/store/StoreNews.vue'),
+        meta: { public: true, store: true, title: '最新消息' },
+      },
+      {
+        path: 'journal',
+        name: 'StoreJournal',
+        component: () => import('@/views/store/StoreJournal.vue'),
+        meta: { public: true, store: true, title: 'JelloJam 日記' },
+      },
+      {
+        path: 'journal/:slug',
+        name: 'StoreJournalPost',
+        component: () => import('@/views/store/StoreJournalPost.vue'),
+        meta: { public: true, store: true, title: '日記文章' },
+      },
+
+      // Public order tracking — no auth required
+      {
+        path: 'order-tracking',
+        name: 'StoreOrderTracking',
+        component: () => import('@/views/store/StoreOrderTracking.vue'),
+        meta: { public: true, store: true, title: '訂單查詢' },
+      },
+
+      // Catch-all: redirect any unmatched /store/* back to store home
+      {
+        path: ':pathMatch(.*)*',
+        redirect: '/store',
       },
     ],
   },
 ]
 
-const router = createRouter({ history: createWebHashHistory(), routes })
+const router = createRouter({ history: createWebHistory(), routes })
 
-router.beforeEach((to, _from, next) => {
-  // Store routes and any other explicitly public routes skip the token check
-  if (to.meta.public || to.path.startsWith('/store')) {
-    return next()
+// One-shot flag: PKCE params in window.location.search should only be acted on
+// during the very first navigation after the OAuth redirect. Hash router never
+// clears search params on subsequent navigations, so we must track this ourselves.
+let _pkceHandled = false
+
+// ── Navigation guards ──────────────────────────────────────────────────────
+router.beforeEach(async (to, _from, next) => {
+  // 0. Supabase PKCE OAuth callback — ?code=&state= arrive in search string.
+  //    Only act on them once (first navigation after OAuth redirect).
+  //    After that, _pkceHandled = true and we skip this block forever.
+  // 0a. LINE server-side callback — Edge Function redirects here with ?line_state=
+  //     (no customer UUID in URL — exchanged server-side via line_tokens table)
+  if (!_pkceHandled && window.location.search.includes('line_state=line_')) {
+    _pkceHandled = true
+    const sp    = new URLSearchParams(window.location.search)
+    const state = sp.get('line_state') ?? ''
+    sessionStorage.setItem('line_callback_state', state)
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+    return next('/store/auth/callback')
   }
 
-  const token = localStorage.getItem('jj_token')
-  if (!token) return next('/login')
+  // 0b. Supabase PKCE OAuth callback — ?code=&state= arrive in search string.
+  if (
+    !_pkceHandled &&
+    window.location.search.includes('code=') &&
+    window.location.search.includes('state=') &&
+    to.path !== '/store/auth/callback'
+  ) {
+    _pkceHandled = true
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+    return next('/store/auth/callback')
+  }
+  _pkceHandled = true  // also mark handled once we pass the check (no params present)
+
+  // 1. ERP admin routes: validate real Supabase JWT (not a fake timestamp)
+  if (!to.path.startsWith('/store') && !to.meta.public) {
+    const { supabaseERP } = await import('@/lib/supabase')
+    const { data: { session } } = await supabaseERP.auth.getSession()
+    if (!session) return next('/login')
+  }
+
+  // 2. Store routes requiring customer login
+  if (to.meta.requireAuth) {
+    const { useStoreAuthStore } = await import('@/stores/storeAuth')
+    const auth = useStoreAuthStore()
+
+    // Wait for initial session check to complete (poll without Vue watch context)
+    if (auth.loading) {
+      await new Promise(resolve => {
+        const tick = () => auth.loading ? setTimeout(tick, 20) : resolve()
+        tick()
+      })
+    }
+
+    if (!auth.isLoggedIn) {
+      return next({ path: '/store/auth', query: { redirect: to.fullPath } })
+    }
+
+    // Hard-reject if :id doesn't match the logged-in customer.
+    // Redirect instead of 403 to avoid leaking whether a UUID exists.
+    // This prevents IDOR: user A visiting /store/member/<user-B-UUID>.
+    if (to.params.id && to.params.id !== auth.customer?.id) {
+      return next(`/store/member/${auth.customer.id}`)
+    }
+
+    // Ensure :id is always present (derive from session, don't trust URL alone)
+    if (!to.params.id && auth.customer?.id) {
+      return next(`/store/member/${auth.customer.id}`)
+    }
+  }
 
   next()
 })

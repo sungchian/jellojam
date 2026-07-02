@@ -122,7 +122,7 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft } from 'lucide-vue-next'
 import { useAppDataStore } from '@/stores/appData'
 
 const route = useRoute()

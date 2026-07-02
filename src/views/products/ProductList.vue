@@ -113,7 +113,7 @@
           <template #default="{ row }"><el-tag v-if="row.box" size="small">{{ row.box }}</el-tag></template>
         </el-table-column>
 
-        <el-table-column label="操作" :width="COL.actions" fixed="right" align="center">
+        <el-table-column label="操作" :width="COL.actions" fixed="right" align="center" class-name="col-action">
           <template #default="{ row }">
             <el-button text type="primary" size="small" :icon="Edit" @click="openEdit(row)">編輯</el-button>
           </template>
@@ -321,10 +321,10 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { Plus, Search, Edit, Close } from '@element-plus/icons-vue'
+import { Plus, Search, SquarePen as Edit, X as Close } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { useAppDataStore } from '@/stores/appData'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase'
 
 // ── 英文 → 繁中 分類對照 ────────────────────────────────────
 const CATEGORY_ZH_MAP = {
@@ -559,7 +559,7 @@ async function submitEdit() {
     showEditModal.value = false
   } catch (err) {
     editError.value = err.message
-    console.error('[編輯商品]', err)
+    console.error('[編輯商品] code:', err?.code)
   } finally {
     editSaving.value = false
   }
@@ -628,7 +628,7 @@ async function submitAdd() {
       .single()
 
     if (prodErr) {
-      console.error('[新增商品] products insert error:', prodErr)
+      console.error('[新增商品] products insert error, code:', prodErr?.code)
       throw new Error(`products 表寫入失敗：${prodErr.message} (code: ${prodErr.code})`)
     }
 
@@ -652,7 +652,7 @@ async function submitAdd() {
       .single()
 
     if (invErr) {
-      console.error('[新增商品] inventory insert error:', invErr)
+      console.error('[新增商品] inventory insert error, code:', invErr?.code)
       // product was created but inventory failed — still update local state
       store.productsRaw.push(product)
       throw new Error(`inventory 表寫入失敗：${invErr.message} (code: ${invErr.code})`)
@@ -667,7 +667,7 @@ async function submitAdd() {
 
   } catch (err) {
     saveError.value = err.message
-    console.error('[新增商品]', err)
+    console.error('[新增商品] code:', err?.code)
   } finally {
     saving.value = false
   }

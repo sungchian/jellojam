@@ -3,7 +3,7 @@
     <!-- Page header -->
     <div class="page-header">
       <h1 class="page-title">🛒 {{ t('cart.title') }}</h1>
-      <span v-if="cart.itemCount > 0" class="item-badge">{{ t('cart.items_total', { n: cart.itemCount }) }}</span>
+      <span v-if="cart.itemCount > 0" class="item-badge">{{ cart.itemCount }}</span>
     </div>
 
     <!-- Empty state -->
@@ -38,7 +38,7 @@
             <!-- Unit price -->
             <div class="item-price">
               <span class="price-label">{{ t('cart.unit_price') }}</span>
-              <span class="price-value">NT${{ item.price.toLocaleString() }}</span>
+              <span class="price-value">NT${{ (item.price || 0).toLocaleString() }}</span>
             </div>
 
             <!-- Qty controls -->
@@ -65,7 +65,7 @@
 
             <!-- Subtotal -->
             <div class="item-subtotal">
-              NT${{ (item.price * item.qty).toLocaleString() }}
+              NT${{ ((item.price || 0) * item.qty).toLocaleString() }}
             </div>
 
             <!-- Remove -->
@@ -120,12 +120,12 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore } from '@/stores/cart'
-import { useStoreMemberStore } from '@/stores/storeMember'
+import { useStoreAuthStore } from '@/stores/storeAuth'
 
 const { t } = useI18n()
 
 const cart = useCartStore()
-const memberStore = useStoreMemberStore()
+const memberStore = useStoreAuthStore()
 const router = useRouter()
 
 const shipping = computed(() => (cart.subtotal >= 1500 ? 0 : 60))

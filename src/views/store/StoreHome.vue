@@ -57,7 +57,7 @@
             <li><span class="rule-dot">✦</span> {{ t('home.points_rule3') }} <span class="tier-badge gold">{{ t('home.tier_gold') }}</span></li>
             <li><span class="rule-dot">✦</span> {{ t('home.points_rule4') }} <span class="tier-badge platinum">{{ t('home.tier_platinum') }}</span></li>
           </ul>
-          <RouterLink to="/store/member" class="points-cta">{{ t('home.featured_sub') }}</RouterLink>
+          <RouterLink :to="auth.isLoggedIn ? `/store/member/${auth.customer?.id}` : '/store/auth'" class="points-cta">{{ t('home.featured_sub') }}</RouterLink>
         </div>
         <div class="points-right">
           <div class="tier-display">
@@ -99,11 +99,6 @@
 
     </div><!-- /content-wrap -->
 
-    <!-- ─────────────── Toast ─────────────── -->
-    <Transition name="toast">
-      <div v-if="toast" class="toast">{{ toast }}</div>
-    </Transition>
-
   </div>
 </template>
 
@@ -113,12 +108,23 @@ import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppDataStore } from '@/stores/appData'
 import { useCartStore } from '@/stores/cart'
+import { useToast } from '@/composables/useToast'
+import { useStoreAuthStore } from '@/stores/storeAuth'
+import { useSeoMeta } from '@/composables/useSeoMeta'
+
+useSeoMeta({
+  title:         'JelloJam — 北美代購精品',
+  description:   'Jellycat、Trader Joe\'s 等北美精品代購，正品保證、快速到貨。免費會員集點，升級享專屬福利。',
+  canonicalPath: '/store',
+})
 
 const { t } = useI18n()
+const auth = useStoreAuthStore()
 
 // ── Stores ───────────────────────────────────────────────────────────────────
 const store = useAppDataStore()
 const cart  = useCartStore()
+const { show: showToast } = useToast()
 
 // ── Category setup ───────────────────────────────────────────────────────────
 const CATEGORY_EMOJI_MAP = {
@@ -190,27 +196,21 @@ const newProducts = computed(() =>
     .slice(0, 8)
 )
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-const toast    = ref('')
-let toastTimer = null
-
-function showToast(msg) {
-  toast.value = msg
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { toast.value = '' }, 2000)
-}
-
 // ── Add to Cart ───────────────────────────────────────────────────────────────
 function addToCart(product) {
   if (!product.in_stock) return
-  cart.addItem({
+  const result = cart.addItem({
     id:           product.id,
     product_name: product.product_name,
     price:        product.store_price || 0,
     stock:        product.current_stock,
     category_zh:  t('categories.' + product.jellycat_category, product.jellycat_category),
   })
-  showToast(`${t('catalog.add_cart')}：${product.product_name} 🐾`)
+  if (result === 'added') {
+    showToast(`${product.product_name} 已加入購物車`, 'success')
+  } else if (result === 'capped') {
+    showToast('已達到庫存上限，無法再增加數量', 'error')
+  }
 }
 
 // ── Inline ProductCard component ──────────────────────────────────────────────
@@ -399,7 +399,7 @@ const ProductCard = defineComponent({
   font-size: 1.35rem;
   font-weight: 800;
   color: var(--jj-text, #1e0a14);
-  margin: 0;
+  margin: 0 0 16px;
 }
 
 .section-more {
@@ -658,34 +658,6 @@ const ProductCard = defineComponent({
   opacity: 0.75;
 }
 
-/* ── Toast ───────────────────────────────────────────────────────────────── */
-.toast {
-  position: fixed;
-  bottom: 32px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--jj-rose-dark, #db2777);
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 12px 28px;
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(219, 39, 119, 0.35);
-  z-index: 9999;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.toast-enter-active,
-.toast-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-.toast-enter-from,
-.toast-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(12px);
-}
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {

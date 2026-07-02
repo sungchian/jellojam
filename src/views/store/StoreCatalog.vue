@@ -32,6 +32,20 @@
       <span class="result-count-mobile">{{ filtered.length }}</span>
     </div>
 
+    <!-- Brand Switcher -->
+    <div class="brand-tabs">
+      <button
+        class="brand-tab"
+        :class="{ active: filterBrand === 'jellycat' }"
+        @click="switchBrand('jellycat')"
+      >🐰 Jellycat</button>
+      <button
+        class="brand-tab"
+        :class="{ active: filterBrand === 'traderjoes' }"
+        @click="switchBrand('traderjoes')"
+      >🛍️ Trader Joe's</button>
+    </div>
+
     <!-- Main Layout -->
     <div class="catalog-layout">
       <!-- Sidebar -->
@@ -50,7 +64,7 @@
             :class="{ active: filterCat === cat }"
             @click="filterCat = cat; page = 1"
           >
-            {{ EMOJI_MAP[cat] || EMOJI_MAP.default }} {{ t('categories.' + cat, cat) }}
+            {{ getCatEmoji(cat) }} {{ t('categories.' + cat, cat) }}
           </button>
         </div>
 
@@ -97,8 +111,21 @@
           <button class="clear-search-btn" @click="searchQ = ''; page = 1">✕</button>
         </div>
 
-        <!-- Empty State -->
-        <div v-if="paginated.length === 0" class="empty-state">
+        <!-- Load error — surface a retry instead of a permanent empty/loading state -->
+        <div v-if="appData.publicCatalogError" class="empty-state">
+          <div class="empty-illustration">⚠️</div>
+          <p class="empty-title">{{ t('catalog.load_error') }}</p>
+          <button class="clear-all-btn" @click="appData.fetchPublicCatalog()">{{ t('catalog.retry') }}</button>
+        </div>
+
+        <!-- Loading skeleton — while the public catalog RPC is in flight -->
+        <div v-else-if="!appData.publicCatalogLoaded" class="empty-state">
+          <div class="empty-illustration">⏳</div>
+          <p class="empty-title">{{ t('catalog.loading') }}</p>
+        </div>
+
+        <!-- Empty State — only once data has genuinely loaded -->
+        <div v-else-if="paginated.length === 0" class="empty-state">
           <div class="empty-illustration">🔍</div>
           <p class="empty-title">{{ t('catalog.no_result') }}</p>
           <p class="empty-sub">{{ t('catalog.no_result_sub') }}</p>
@@ -116,9 +143,9 @@
               <!-- Card Image -->
               <div
                 class="card-img"
-                :style="{ background: getGradient(product.jellycat_category) }"
+                :style="{ background: getGradient(product) }"
               >
-                <span class="card-emoji">{{ getEmoji(product.jellycat_category) }}</span>
+                <span class="card-emoji">{{ getEmoji(product) }}</span>
                 <!-- Low stock chip -->
                 <span
                   v-if="product.current_stock > 0 && product.current_stock <= 2"
@@ -133,8 +160,10 @@
               <!-- Card Body -->
               <div class="card-body">
                 <p class="card-name">{{ product.product_name }}</p>
-                <span class="cat-tag">
-                  {{ t('categories.' + product.jellycat_category, product.jellycat_category_zh || product.jellycat_category) }}
+                <span class="cat-tag" :class="{ 'tj-tag': product.brand === 'traderjoes' }">
+                  {{ product.brand === 'traderjoes'
+                    ? product.tj_category
+                    : t('categories.' + product.jellycat_category, product.jellycat_category_zh || product.jellycat_category) }}
                 </span>
                 <div class="price-row">
                   <span class="card-price">
@@ -206,7 +235,7 @@
                 :class="{ active: filterCat === cat }"
                 @click="filterCat = cat; page = 1"
               >
-                {{ EMOJI_MAP[cat] || EMOJI_MAP.default }} {{ t('categories.' + cat, cat) }}
+                {{ getCatEmoji(cat) }} {{ t('categories.' + cat, cat) }}
               </button>
             </div>
           </div>
@@ -247,6 +276,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppDataStore } from '@/stores/appData'
 import { useCartStore } from '@/stores/cart'
+import { useToast } from '@/composables/useToast'
+import { useSeoMeta } from '@/composables/useSeoMeta'
+
+useSeoMeta({
+  title:         '商品目錄',
+  description:   '瀏覽 JelloJam 全系列 Jellycat 玩偶、Trader Joe\'s 零食保養品代購商品，現貨直接下單。',
+  canonicalPath: '/store/catalog',
+})
 
 const { t } = useI18n()
 
@@ -254,9 +291,24 @@ const route = useRoute()
 const router = useRouter()
 const appData = useAppDataStore()
 const cart = useCartStore()
+const { show: showToast } = useToast()
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const PAGE_SIZE = 12
+
+// Jellycat category groups（for nav group= param）
+const JJ_GROUPS = {
+  bunnies:    ['Bunnies', 'Bashful', 'Bashfuls', 'Bashful Bunnies', 'Bashful Bunnies (Luxe)', 'Bashful Bag Charms'],
+  amuseables: ['Amuseables', 'Amuseables Bag Charms', 'Amuseables Bags', 'Amuseables Flowers',
+               'Amuseables Food', 'Amuseables Food & Drink', 'Amuseables Nature', 'Amuseables Garden',
+               'Amuseables Insects', 'Amuseables Plants', 'Amuseables Sport'],
+  animals:    ['Bears', 'Bears (Smudge)', 'Dogs', 'Cats', 'Elephants', 'Foxes', 'Dinosaurs', 'Penguins',
+               'Monkeys', 'Horses', 'Jellyfish', 'Dragons', 'Unicorns', 'Pigs', 'Cows', 'Sheep',
+               'Birds', 'Frogs', 'Fish', 'Octopus', 'Animals', 'Monsters', 'Sea Creatures'],
+  baby:       ['Bedtime', 'Soothers', 'Little', 'Fuddlewuddles'],
+  charms:     ['Bag Charms', 'Backpack Pets', 'Bags & Cases', 'Accessories', 'Riverside Ramblers'],
+  limited:    ['Christmas', 'Seasonal'],
+}
 
 const GRAD_MAP = {
   Bunnies: 'linear-gradient(135deg,#fce7f3,#fbcfe8)',
@@ -278,14 +330,27 @@ const EMOJI_MAP = {
   default:   '🧸',
 }
 
+const TJ_GRAD_MAP = {
+  '零食':  'linear-gradient(135deg,#fef9c3,#fde047)',
+  '保養品': 'linear-gradient(135deg,#f0fdf4,#bbf7d0)',
+  default: 'linear-gradient(135deg,#f1f5f9,#e2e8f0)',
+}
+
+const TJ_EMOJI_MAP = {
+  '零食':  '🍪',
+  '保養品': '🧴',
+}
+
 // ── Reactive State ─────────────────────────────────────────────────────────
-const filterCat   = ref(route.query.cat || '')
-const filterStock = ref('all')
+const filterBrand = ref(route.query.brand || 'jellycat')
+const filterGroup = ref(route.query.group || '')
+const filterCat   = ref(route.query.cat   || '')
+const filterStock = ref(route.query.stock  || 'all')
 const filterPriceMin = ref(null)
 const filterPriceMax = ref(null)
 const priceMinDraft  = ref(null)
 const priceMaxDraft  = ref(null)
-const sortKey        = ref('hot')
+const sortKey        = ref(route.query.sort || 'hot')
 const page           = ref(1)
 const searchQ        = ref(route.query.q || '')
 const mobileSheetOpen = ref(false)
@@ -295,12 +360,26 @@ const storeProducts = computed(() => appData.storeProducts || [])
 
 // ── Derived ────────────────────────────────────────────────────────────────
 const allCategories = computed(() => {
-  const cats = storeProducts.value.map(p => p.jellycat_category).filter(Boolean)
+  if (filterBrand.value === 'traderjoes') {
+    const cats = storeProducts.value.filter(p => p.brand === 'traderjoes').map(p => p.tj_category).filter(Boolean)
+    return [...new Set(cats)].sort()
+  }
+  const cats = storeProducts.value.filter(p => p.brand !== 'traderjoes').map(p => p.jellycat_category).filter(Boolean)
   return [...new Set(cats)].sort()
 })
 
-const getGradient = (cat) => GRAD_MAP[cat] || GRAD_MAP.default
-const getEmoji    = (cat) => EMOJI_MAP[cat] || EMOJI_MAP.default
+const getGradient = (product) => {
+  if (product.brand === 'traderjoes') return TJ_GRAD_MAP[product.tj_category] || TJ_GRAD_MAP.default
+  return GRAD_MAP[product.jellycat_category] || GRAD_MAP.default
+}
+const getEmoji = (product) => {
+  if (product.brand === 'traderjoes') return TJ_EMOJI_MAP[product.tj_category] || '🛍️'
+  return EMOJI_MAP[product.jellycat_category] || EMOJI_MAP.default
+}
+const getCatEmoji = (cat) => {
+  if (filterBrand.value === 'traderjoes') return TJ_EMOJI_MAP[cat] || '🛍️'
+  return EMOJI_MAP[cat] || EMOJI_MAP.default
+}
 
 const formatPrice = (price) => {
   if (price == null) return t('catalog.price_query')
@@ -309,10 +388,19 @@ const formatPrice = (price) => {
 
 // ── Filters ────────────────────────────────────────────────────────────────
 const filtered = computed(() => {
-  let list = [...storeProducts.value]
+  let list = storeProducts.value.filter(p => (p.brand || 'jellycat') === filterBrand.value)
+
+  // Group filter (Jellycat nav groups: bunnies / amuseables / animals / baby / charms / limited)
+  if (filterGroup.value && JJ_GROUPS[filterGroup.value]) {
+    list = list.filter(p => JJ_GROUPS[filterGroup.value].includes(p.jellycat_category))
+  }
 
   if (filterCat.value) {
-    list = list.filter(p => p.jellycat_category === filterCat.value)
+    if (filterBrand.value === 'traderjoes') {
+      list = list.filter(p => p.tj_category === filterCat.value)
+    } else {
+      list = list.filter(p => p.jellycat_category === filterCat.value)
+    }
   }
   if (filterStock.value === 'in_stock') {
     list = list.filter(p => p.current_stock > 0)
@@ -327,7 +415,8 @@ const filtered = computed(() => {
     const q = searchQ.value.trim().toLowerCase()
     list = list.filter(p =>
       (p.product_name || '').toLowerCase().includes(q) ||
-      (p.jellycat_category || '').toLowerCase().includes(q)
+      (p.jellycat_category || '').toLowerCase().includes(q) ||
+      (p.tj_category || '').toLowerCase().includes(q)
     )
   }
 
@@ -375,6 +464,13 @@ const activeFilterCount = computed(() => {
 })
 
 // ── Actions ────────────────────────────────────────────────────────────────
+const switchBrand = (brand) => {
+  filterBrand.value = brand
+  filterGroup.value = ''
+  filterCat.value   = ''
+  page.value        = 1
+}
+
 const applyPrice = () => {
   filterPriceMin.value = priceMinDraft.value || null
   filterPriceMax.value = priceMaxDraft.value || null
@@ -382,6 +478,7 @@ const applyPrice = () => {
 }
 
 const clearFilters = () => {
+  filterGroup.value    = ''
   filterCat.value      = ''
   filterStock.value    = 'all'
   filterPriceMin.value = null
@@ -393,15 +490,26 @@ const clearFilters = () => {
 }
 
 const addToCart = (product) => {
-  cart.addItem(product, 1)
+  const result = cart.addItem(product, 1)
+  if (result === 'added') {
+    showToast(`${product.product_name} 已加入購物車`, 'success')
+  } else if (result === 'capped') {
+    showToast('已達到庫存上限，無法再增加數量', 'error')
+  } else if (result === 'out_of_stock') {
+    showToast('商品已售完', 'error')
+  }
 }
 
 // ── Watchers ───────────────────────────────────────────────────────────────
 watch(
   () => route.query,
   (q) => {
-    if (q.cat !== undefined) filterCat.value = q.cat || ''
-    if (q.q   !== undefined) searchQ.value   = q.q   || ''
+    if (q.brand !== undefined) filterBrand.value = q.brand || 'jellycat'
+    if (q.group !== undefined) filterGroup.value = q.group || ''
+    if (q.cat   !== undefined) filterCat.value   = q.cat   || ''
+    if (q.q     !== undefined) searchQ.value     = q.q     || ''
+    if (q.sort  !== undefined) sortKey.value     = q.sort  || 'hot'
+    if (q.stock !== undefined) filterStock.value = q.stock || 'all'
     page.value = 1
   }
 )
@@ -412,6 +520,33 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
 </script>
 
 <style scoped>
+/* ── Brand Tabs ─────────────────────────────────────────────────────────── */
+.brand-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.brand-tab {
+  padding: 8px 20px;
+  border: 2px solid var(--jj-border);
+  border-radius: 999px;
+  background: var(--jj-white);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--jj-text-sub);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.brand-tab:hover {
+  border-color: var(--jj-rose);
+  color: var(--jj-rose-dark);
+}
+.brand-tab.active {
+  background: var(--jj-rose-dark);
+  border-color: var(--jj-rose-dark);
+  color: white;
+}
+
 /* ── Page Layout ──────────────────────────────────────────────────────────── */
 .catalog-page {
   max-width: 1200px;
@@ -738,6 +873,10 @@ watch([filterCat, filterStock, filterPriceMin, filterPriceMax, searchQ, sortKey]
   padding: 2px 8px;
   font-weight: 500;
   align-self: flex-start;
+}
+.cat-tag.tj-tag {
+  background: #d1fae5;
+  color: #065f46;
 }
 .price-row {
   display: flex;

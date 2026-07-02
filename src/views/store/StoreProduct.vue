@@ -184,11 +184,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppDataStore } from '@/stores/appData'
 import { useCartStore } from '@/stores/cart'
+import { useSeoMeta } from '@/composables/useSeoMeta'
+import { useToast } from '@/composables/useToast'
 
 const { t } = useI18n()
 
@@ -196,6 +198,7 @@ const route  = useRoute()
 const router = useRouter()
 const appData = useAppDataStore()
 const cart    = useCartStore()
+const { show: showToast } = useToast()
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const GRAD_MAP = {
@@ -231,6 +234,16 @@ const product = computed(() => {
   return storeProducts.value.find(p => p.id === id) || null
 })
 
+// Update meta tags whenever product loads (storeProducts may arrive async)
+watch(product, (p) => {
+  if (!p) return
+  useSeoMeta({
+    title:         p.product_name,
+    description:   `${p.product_name} — JelloJam 北美代購。${p.current_stock > 0 ? '現貨供應' : '預購中'}，正品保證快速到貨。`,
+    canonicalPath: `/store/product/${p.id}`,
+  })
+}, { immediate: true })
+
 const maxQty = computed(() => {
   if (!product.value) return 0
   return Math.max(0, product.value.current_stock)
@@ -258,15 +271,30 @@ const incQty = () => { if (qty.value < maxQty.value) qty.value++ }
 const decQty = () => { if (qty.value > 1) qty.value-- }
 
 // ── Actions ────────────────────────────────────────────────────────────────
+function handleAddResult(result, name) {
+  if (result === 'added') {
+    showToast(`${name} 已加入購物車`, 'success')
+  } else if (result === 'capped') {
+    showToast('已達到庫存上限，無法再增加數量', 'error')
+  } else if (result === 'out_of_stock') {
+    showToast('商品已售完', 'error')
+  }
+}
+
 const addToCartOnly = () => {
   if (!product.value || product.value.current_stock <= 0) return
-  cart.addItem(product.value, qty.value)
+  const result = cart.addItem(product.value, qty.value)
+  handleAddResult(result, product.value.product_name)
 }
 
 const buyNow = () => {
   if (!product.value || product.value.current_stock <= 0) return
-  cart.addItem(product.value, qty.value)
-  router.push('/store/cart')
+  const result = cart.addItem(product.value, qty.value)
+  if (result === 'added') {
+    router.push('/store/cart')
+  } else {
+    handleAddResult(result, product.value.product_name)
+  }
 }
 </script>
 
