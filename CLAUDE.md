@@ -1,53 +1,35 @@
-# JelloJam ERP — Claude Code Guide
+# JelloJam ERP — Claude 導航
 
-## 專案簡介
-JelloJam 北美代購的 ERP 後台 + 電商前台，單一 Vue 3 SPA，同時包含：
-- **ERP 後台**（`/dashboard`, `/orders`, `/products` 等）— 員工使用，Supabase Auth JWT
-- **購物前台**（`/store/*`）— 客戶使用，Google OAuth + LINE OAuth
+JelloJam 北美代購的 ERP 後台（`/dashboard`,`/orders`… 員工用）＋ 電商前台（`/store/*` 顧客用），單一 Vue 3 + Supabase SPA。
 
-## Tech Stack
-- **Frontend**: Vue 3 + Vite + Pinia + Vue Router (hash mode)
-- **UI**: Element Plus（ERP） + 自訂 CSS（前台，使用 `--jj-*` 變數）
-- **Backend**: Supabase（PostgreSQL + Auth + Edge Functions）
-- **編輯器**: Quill（日記文章）
-- **安全**: DOMPurify（XSS 防護）
+> 這份是**導航**，不是事實依據。細節容易過時，一律去引用檔查。
 
-## 重要檔案
-| 路徑 | 用途 |
-|------|------|
-| `src/lib/supabase.js` | Supabase client（`supabase` = 前台, `supabaseERP` = 後台） |
-| `src/stores/storeAuth.js` | 前台 Auth（Google + LINE + email） |
-| `src/stores/auth.js` | ERP Auth（Supabase JWT） |
-| `src/router/index.js` | 路由 + auth guards |
-| `src/styles/global.css` | 全域 CSS 變數（`--jj-rose`, `--jj-text` 等） |
-| `supabase/functions/line-auth/` | LINE OAuth Edge Function（部署為 `super-service`） |
-| `.env` | 環境變數（`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_LINE_CHANNEL_ID`） |
+## 🚦 動手前必讀（依任務挑一個）
+| 你要做的事 | 先讀 |
+|-----------|------|
+| 查任何「事實」（欄位名、狀態字串、RPC、資料表、認證現況） | **[PROJECT_FACTS.md](PROJECT_FACTS.md)**（已驗證、附日期）— **不要憑 CLAUDE.md 或印象** |
+| 連生產 DB 查資料 / 套 migration | [SUPABASE_ACCESS.md](SUPABASE_ACCESS.md)（金鑰守則 + 範本） |
+| 決定怎麼工作（要不要派 subagent、用哪個模型、怎麼驗證） | [.claude/playbook/](.claude/playbook/) — 見下方索引 |
 
-## Supabase 主要資料表
-- `orders` + `order_items` — 訂單
-- `customers` — 客戶（含 `auth_user_id`, `line_oauth_id`）
-- `products` + `inventory` — 商品庫存
-- `journal_posts` — 日記文章
-- `line_tokens` — LINE OAuth 短效 token（5分鐘過期）
-- `auth_audit_log` — 登入稽核紀錄
-- `store_sessions` — 前台 session 管理
-
-## 安全規則（已修復，勿退回）
-- **所有 customer 查詢**必須加 `.eq('customer_id', auth.customer.id)` 或 `.eq('id', auth.customer.id)`
-- **v-html** 必須用 `DOMPurify.sanitize()`
-- **redirect 參數**必須用 `/^\/(?!\/)/.test(raw)` 驗證
-- **console.error** 只印 `e?.code`，不印完整 error 物件
-- **loginByName 已刪除**，不要重新加入
+## 🔴 三條最高鐵則（違反會出事，其餘細節在 PROJECT_FACTS.md）
+1. **安全邊界是資料庫 RLS，不是前端**。前台顧客資料一律走 RPC（如 `create_storefront_order`、`public_catalog`、`redeem_points`），**不要直接 `insert`/`update` orders/customers/points**。（舊規則「加 `.eq('customer_id')` 就安全」已作廢。）
+2. **動手前先驗證真實 schema/字串**，尤其：訂單狀態是 `顧客已取消`（不是 `已取消`）、`products` 沒有 `price` 欄、`orders` 總額要用 items 現算。清單見 PROJECT_FACTS.md。
+3. **`v-html` 必用 `DOMPurify.sanitize()`**；**redirect 參數**用 `/^\/(?!\/)/.test(raw)` 驗證；**console.error 只印 `e?.code`** 不印完整 error 物件。
 
 ## 開發指令
 ```bash
-npm run dev      # 開發伺服器 localhost:3000
-npm run build    # 生產 build
-supabase functions deploy super-service --project-ref iifhubablhxibpsyeagi
+npm run build     # 用它驗證前端沒編譯壞（這環境的 dev server 預覽工具連不到，靠 build + DB 直測）
+supabase functions deploy super-service --no-verify-jwt --project-ref iifhubablhxibpsyeagi   # 少了 --no-verify-jwt 會壞 LINE 登入
+# 前端：git push origin main → Vercel 自動部署
 ```
 
-## Slash Commands
-- `/security` — 資安掃描最近改動的檔案
-- `/component [name]` — 建立新 Vue 元件
-- `/db [query]` — 用自然語言查 Supabase
-- `/pr` — PR 前的完整檢查清單
+## Playbook 索引（`.claude/playbook/`）— 較弱模型的工作制度
+- **[00-diagnosis.md](.claude/playbook/00-diagnosis.md)** — 最容易翻車的前三名 + 修法（先讀這份）
+- **[10-orchestration.md](.claude/playbook/10-orchestration.md)** — 模型調度：指揮官不下場、派工三件套、model/effort 怎麼指定、回報合約、升降級
+- **[20-judgment-rubrics.md](.claude/playbook/20-judgment-rubrics.md)** — 判斷力 checklist：何時升級、何時算完成、何時該問、方向錯的訊號、品質底線
+- **[30-delegation-templates.md](.claude/playbook/30-delegation-templates.md)** — 派工模板：搜尋/實作/重構/研究/審查（填空即用）
+- **[40-maintenance.md](.claude/playbook/40-maintenance.md)** — 怎麼安全更新這些制度檔（哪些可自改、哪些先問）
+- **[50-letter-to-future.md](.claude/playbook/50-letter-to-future.md)** — 給未來 session 的交接信
+
+## 舊的 `agents/*.md`
+`agents/` 目錄是**角色扮演文件**（把主對話當成不同角色的敘述），不是真正的 subagent 調度。真正的委派方式見 `10-orchestration.md`。舊檔保留供參考，但**以 playbook 為準**。
