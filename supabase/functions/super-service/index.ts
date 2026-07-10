@@ -9,15 +9,19 @@ Deno.serve(async (req) => {
     const code  = url.searchParams.get('code')
     const state = url.searchParams.get('state')
 
-    const FRONTEND_URL = Deno.env.get('FRONTEND_URL') ?? 'http://localhost:3000'
+    // strip trailing slash so path concatenation never yields //store/... (breaks routing)
+    const FRONTEND_URL = (Deno.env.get('FRONTEND_URL') ?? 'http://localhost:3000').replace(/\/+$/, '')
 
+    // NOTE: the router is history mode (createWebHistory) — hash URLs like
+    // /#/store/auth land on the homepage and the error is never shown.
+    // Error codes are a fixed enum the login page maps to friendly copy.
     if (!code || !state) {
-      return Response.redirect(`${FRONTEND_URL}/#/store/auth?error=missing_params`, 302)
+      return Response.redirect(`${FRONTEND_URL}/store/auth?error=missing_params`, 302)
     }
 
     // Basic state sanity-check: our client always generates 'line_' prefixed states
     if (!state.startsWith('line_')) {
-      return Response.redirect(`${FRONTEND_URL}/#/store/auth?error=invalid_state`, 302)
+      return Response.redirect(`${FRONTEND_URL}/store/auth?error=invalid_state`, 302)
     }
 
     try {
@@ -33,9 +37,9 @@ Deno.serve(async (req) => {
       )
     } catch (err) {
       console.error('[line-auth] error:', err)
-      const msg = err instanceof Error ? err.message : 'LINE 登入失敗'
+      // Fixed code only — details stay in server logs, never in the customer's URL.
       return Response.redirect(
-        `${FRONTEND_URL}/#/store/auth?error=${encodeURIComponent(msg)}`,
+        `${FRONTEND_URL}/store/auth?error=line_login_failed`,
         302,
       )
     }
@@ -128,6 +132,7 @@ async function processLineLogin(code: string, state: string) {
 
   // Create the auth user if it doesn't exist yet; otherwise reuse it.
   let authUserId: string | null = customer.auth_user_id ?? null
+  let createdNow = false
   if (!authUserId) {
     const { data: createdUser, error: cuErr } = await supabase.auth.admin.createUser({
       email: authEmail,
@@ -136,6 +141,7 @@ async function processLineLogin(code: string, state: string) {
     })
     if (createdUser?.user) {
       authUserId = createdUser.user.id
+      createdNow = true
     } else {
       // Already exists (e.g. re-login before customers.auth_user_id was linked):
       // find the existing user by email via pagination.
@@ -151,6 +157,15 @@ async function processLineLogin(code: string, state: string) {
     }
     // Link the customer row to this auth user (idempotent).
     await supabase.from('customers').update({ auth_user_id: authUserId }).eq('id', customer.id)
+  }
+
+  // Backfill user_metadata.provider for auth users created before this metadata
+  // existed (the frontend's isLineAuth reads it). Only for LINE-only synthetic
+  // accounts — never touch a real-email (possibly Google) account's metadata.
+  if (authUserId && !createdNow && authEmail.endsWith('@line.jellojam.local')) {
+    await supabase.auth.admin.updateUserById(authUserId, {
+      user_metadata: { provider: 'line', line_oauth_id: profile.userId, display_name: profile.displayName },
+    })
   }
 
   // Generate a one-time magic-link token; the frontend exchanges it (via

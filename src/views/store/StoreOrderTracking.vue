@@ -40,18 +40,27 @@
             <span class="summary-label">訂單編號</span>
             <span class="summary-val order-no-val">{{ order.order_no }}</span>
           </div>
-          <div class="summary-row">
+          <div class="summary-row" v-if="order.created_at">
             <span class="summary-label">下單日期</span>
-            <span class="summary-val">{{ order.sales_date }}</span>
+            <span class="summary-val">{{ formatDate(order.created_at) }}</span>
           </div>
-          <div class="summary-row" v-if="order.payment_amount">
-            <span class="summary-label">訂單金額</span>
-            <span class="summary-val price-val">NT$ {{ Number(order.payment_amount).toLocaleString() }}</span>
+          <div class="summary-row items-row" v-if="order.items_summary?.length">
+            <span class="summary-label">商品明細</span>
+            <span class="summary-val">
+              <span v-for="(it, i) in order.items_summary" :key="i" class="item-line">
+                {{ it.product_name }} × {{ it.qty }}
+              </span>
+            </span>
           </div>
         </div>
 
+        <!-- Merged notice（已併單：不顯示進度條） -->
+        <div v-if="order.status === '已併單'" class="cancelled-notice">
+          🔗 此訂單已與您的其他訂單合併，請以合併後的訂單為準；如有疑問請透過 LINE 聯絡我們
+        </div>
+
         <!-- Status Timeline -->
-        <div class="timeline-section">
+        <div class="timeline-section" v-else>
           <div class="timeline-title">訂單進度</div>
           <div class="order-timeline">
             <div
@@ -61,12 +70,12 @@
               :class="{
                 'tl-done':    isStepDone(order.status, step.key),
                 'tl-active':  isStepActive(order.status, step.key),
-                'tl-cancelled': order.status === '已取消',
+                'tl-cancelled': order.status === '顧客已取消',
               }"
             >
               <div class="tl-dot">
                 <span class="tl-icon">
-                  {{ order.status === '已取消' && i === 0 ? '✕' : (isStepDone(order.status, step.key) ? '✓' : step.icon) }}
+                  {{ order.status === '顧客已取消' && i === 0 ? '✕' : (isStepDone(order.status, step.key) ? '✓' : step.icon) }}
                 </span>
               </div>
               <div v-if="i < ORDER_STEPS.length - 1" class="tl-line"
@@ -76,20 +85,8 @@
           </div>
 
           <!-- Cancelled notice -->
-          <div v-if="order.status === '已取消'" class="cancelled-notice">
+          <div v-if="order.status === '顧客已取消'" class="cancelled-notice">
             此訂單已取消，如有疑問請透過 LINE 聯絡我們
-          </div>
-
-          <!-- Shipped: show tracking if available -->
-          <div v-if="order.tracking_no" class="tracking-no-block">
-            <span class="tn-label">🚚 物流單號</span>
-            <span class="tn-val">{{ order.tracking_no }}</span>
-          </div>
-
-          <!-- Logistics store -->
-          <div v-if="order.logistics_name" class="tracking-no-block">
-            <span class="tn-label">🏪 取貨門市</span>
-            <span class="tn-val">{{ order.logistics_name }}</span>
           </div>
         </div>
 
@@ -114,16 +111,19 @@ import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const LINE_URL = 'https://line.me/R/ti/p/@jellojam'
+// 與全站其他處（StoreLayout 頁尾、結帳成功頁 BANK_INFO）同一個官方帳號
+const LINE_URL = 'https://line.me/ti/p/~@685evhie'
 
+// Order status timeline — keys must match statuses used in orders table
 const ORDER_STEPS = [
-  { key: '待確認',  label: '待確認',  icon: '📋' },
-  { key: '處理中',  label: '備貨中',  icon: '📦' },
-  { key: '已出貨',  label: '已出貨',  icon: '🚚' },
-  { key: '已完成',  label: '已完成',  icon: '✅' },
+  { key: '已填表單',   label: '已填表單',   icon: '📋' },
+  { key: '在美現貨',   label: '在美現貨',   icon: '🇺🇸' },
+  { key: '台灣待出貨', label: '台灣待出貨', icon: '📦' },
+  { key: '已出貨',     label: '已出貨',     icon: '🚚' },
+  { key: '已完成',     label: '已完成',     icon: '✅' },
 ]
 
-const STATUS_ORDER = { '待確認': 0, '已填表單': 0, '處理中': 1, '已出貨': 2, '已完成': 3 }
+const STATUS_ORDER = { '已填表單': 0, '在美現貨': 1, '台灣待出貨': 2, '已出貨': 3, '已完成': 4 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const searchNo  = ref('')
@@ -132,13 +132,20 @@ const errorMsg  = ref('')
 const order     = ref(null)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function formatDate(ts) {
+  const d = new Date(ts)
+  if (isNaN(d)) return ''
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 function isStepDone(status, stepKey) {
-  if (status === '已取消') return false
+  if (status === '顧客已取消') return false
   return (STATUS_ORDER[status] ?? -1) > (STATUS_ORDER[stepKey] ?? 0)
 }
 
 function isStepActive(status, stepKey) {
-  if (status === '已取消') return stepKey === '待確認'
+  if (status === '顧客已取消') return stepKey === '已填表單'
   return (STATUS_ORDER[status] ?? 0) === (STATUS_ORDER[stepKey] ?? 0)
 }
 
@@ -152,13 +159,10 @@ async function handleSearch() {
   order.value     = null
 
   try {
-    // Only expose safe public fields — no customer PII
+    // 走 SECURITY DEFINER RPC（anon 可呼叫、只回無 PII 的安全欄位）。
+    // 不可直接 select orders：RLS 擋匿名讀取，且舊寫法引用了不存在的欄位。
     const { data, error } = await supabase
-      .from('orders')
-      .select('id, order_no, sales_date, status, payment_amount, tracking_no, logistics_name')
-      .eq('order_no', no)
-      .is('deleted_at', null)
-      .maybeSingle()
+      .rpc('get_order_status_by_no', { p_order_no: no })
 
     if (error) {
       console.error('[order_tracking] query error, code:', error?.code)
@@ -166,12 +170,13 @@ async function handleSearch() {
       return
     }
 
-    if (!data) {
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row) {
       errorMsg.value = '找不到此訂單編號，請確認後再試'
       return
     }
 
-    order.value = data
+    order.value = row
   } catch (e) {
     console.error('[order_tracking] unexpected error, code:', e?.code)
     errorMsg.value = '查詢失敗，請稍後再試'
@@ -267,8 +272,9 @@ function resetSearch() {
 .summary-label { color: var(--jj-text-sub); font-weight: 500; }
 .summary-val   { font-weight: 600; color: var(--jj-text); }
 .order-no-val  { font-family: monospace; font-size: 15px; font-weight: 800; color: var(--jj-rose-dark); }
-.price-val     { color: var(--jj-rose-dark); font-size: 16px; font-weight: 800; }
-
+.items-row     { align-items: flex-start; }
+.items-row .summary-val { display: flex; flex-direction: column; gap: 2px; text-align: right; }
+.item-line     { font-size: 13px; font-weight: 500; }
 /* ── Timeline ── */
 .timeline-section {
   background: var(--jj-white);
@@ -337,17 +343,6 @@ function resetSearch() {
   padding: 10px 14px;
   text-align: center;
 }
-.tracking-no-block {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  padding: 8px 12px;
-  background: #f7f6f0;
-  border-radius: 8px;
-}
-.tn-label { color: var(--jj-text-sub); font-weight: 600; flex-shrink: 0; }
-.tn-val   { font-family: monospace; font-weight: 700; color: var(--jj-text); }
 
 /* ── Actions ── */
 .result-actions {

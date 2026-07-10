@@ -198,12 +198,25 @@ const googleLoading = ref(false)
 const lineLoading   = ref(false)
 const emailLoading  = ref(false)
 
+// LINE edge function 失敗時以固定 error code 導回 /store/auth?error=<code>
+// （history mode，不能用 hash 路徑）。只認白名單 code、不渲染任意查詢字串。
+const OAUTH_ERROR_MAP = {
+  missing_params:    'LINE 登入參數不完整，請重新登入',
+  invalid_state:     'LINE 登入驗證失敗，請重新登入',
+  line_login_failed: 'LINE 登入失敗，請稍後再試',
+}
+
 // Pick up errors forwarded from StoreAuthCallback via sessionStorage
-// (avoids exposing error details in URL query params / browser history)
+// (avoids exposing error details in URL query params / browser history),
+// or a whitelisted ?error= code from the LINE edge function redirect.
 const errorMsg = ref((() => {
   const e = sessionStorage.getItem('auth_error') || ''
-  if (e) sessionStorage.removeItem('auth_error')
-  return e
+  if (e) {
+    sessionStorage.removeItem('auth_error')
+    return e
+  }
+  const q = route.query.error
+  return (typeof q === 'string' && OAUTH_ERROR_MAP[q]) || ''
 })())
 
 // ── Login form ────────────────────────────────────────────────────────────
@@ -245,11 +258,24 @@ watch(() => auth.isLoggedIn, (val) => {
   if (val) redirectAfterLogin()
 }, { immediate: true })
 
+// Stash validated redirect before OAuth full-page redirects (Google/LINE) —
+// the route query doesn't survive the round-trip, but sessionStorage does.
+// StoreAuthCallback reads it back after login. Same open-redirect guard as above.
+function stashRedirect() {
+  const raw = route.query.redirect
+  if (typeof raw === 'string' && /^\/(?!\/)/.test(raw)) {
+    sessionStorage.setItem('jj_login_redirect', raw)
+  } else {
+    sessionStorage.removeItem('jj_login_redirect')
+  }
+}
+
 // ── Google login ──────────────────────────────────────────────────────────
 async function handleGoogleLogin() {
   errorMsg.value = ''
   googleLoading.value = true
   try {
+    stashRedirect()
     await auth.loginWithGoogle()
     // Browser will redirect to Google — loading stays true
   } catch (e) {
@@ -263,6 +289,7 @@ async function handleLineLogin() {
   errorMsg.value = ''
   lineLoading.value = true
   try {
+    stashRedirect()
     auth.loginWithLine()
     // Browser will redirect to LINE — loading stays true
   } catch (e) {

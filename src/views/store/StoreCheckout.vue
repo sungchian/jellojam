@@ -355,6 +355,18 @@ const appData = useAppDataStore()
 // Redirect if cart is empty; pre-fill form from logged-in member
 onMounted(() => {
   if (cart.itemCount === 0) {
+    // Refreshing the success page must not lose the bank-transfer info —
+    // restore the just-placed order instead of bouncing to the catalog.
+    try {
+      const last = JSON.parse(sessionStorage.getItem('jj_last_order') || 'null')
+      if (last?.orderNo && Date.now() - (last.ts || 0) < 24 * 3600 * 1000) {
+        orderNo.value        = last.orderNo
+        finalTotal.value     = Number(last.total) || 0
+        paidByTransfer.value = !!last.transfer
+        submitted.value      = true
+        return
+      }
+    } catch {}
     router.replace('/store/catalog')
     return
   }
@@ -362,7 +374,9 @@ onMounted(() => {
   if (c) {
     if (c.name || c.display_name) form.name  = c.display_name || c.name
     if (c.email)                   form.email = c.email
-    if (c.line_user_id)            form.lineId = c.line_user_id
+    // line_user_id may hold the internal LINE token (U + 32 hex), which the
+    // customer should never see or edit — only prefill human-entered ids.
+    if (c.line_user_id && !/^U[0-9a-f]{32}$/i.test(c.line_user_id)) form.lineId = c.line_user_id
   }
 })
 
@@ -543,16 +557,19 @@ function dateToWeek(dateStr) {
   return `${date.getFullYear()}${String(weekNo).padStart(2, '0')}`
 }
 
-// Idempotency key persisted for THIS cart, so a retry (reload, timeout re-click)
-// reuses the same key and the orders.idempotency_key UNIQUE constraint actually
-// dedupes. Reset whenever the cart contents change (see submitOrder success).
-function getIdempotencyKey() {
+// Idempotency key persisted for THIS exact cart+options combination, so a retry
+// (reload, timeout re-click) reuses the same key and the server dedupes — but any
+// change to items/addons/coupon/shipping gets a fresh key. Otherwise a timed-out
+// (yet server-created) order would swallow the new submission and silently return
+// the old order instead.
+function getIdempotencyKey(sig) {
   const KEY = 'jj_checkout_idem'
-  let k = sessionStorage.getItem(KEY)
-  if (!k) {
-    k = crypto.randomUUID()
-    try { sessionStorage.setItem(KEY, k) } catch {}
-  }
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null')
+    if (saved?.sig === sig && saved?.k) return saved.k
+  } catch {}
+  const k = crypto.randomUUID()
+  try { sessionStorage.setItem(KEY, JSON.stringify({ k, sig })) } catch {}
   return k
 }
 
@@ -591,9 +608,16 @@ async function submitOrder() {
   try {
     const today = todayLocal()
     const salesWeek = dateToWeek(today)
-    // Stable across retries for this cart so the server-side idempotency check
-    // dedupes duplicate submissions (reload / timeout re-click).
-    const idempotencyKey = getIdempotencyKey()
+    // Stable across retries of this exact order so the server-side idempotency
+    // check dedupes duplicate submissions; fresh when anything order-affecting changes.
+    const orderSig = JSON.stringify({
+      items:  cart.items.map(i => [i.id, i.qty]),
+      addons: selectedAddons.value.map(a => [a.name, a.qty]),
+      coupon: appliedCoupon.value?.code || null,
+      ship:   form.shippingMethod,
+      pay:    form.paymentMethod,
+    })
+    const idempotencyKey = getIdempotencyKey(orderSig)
 
     // Server-side order creation. We send ONLY product ids + quantities and the
     // customer's own contact info — every price/fee/discount is recomputed by
@@ -637,6 +661,16 @@ async function submitOrder() {
     paidByTransfer.value = form.paymentMethod === 'transfer'
     finalTotal.value     = Number(result?.total) || grandTotal.value
     submitted.value      = true
+    // Persist the confirmation so a reload doesn't lose the order no / bank info
+    // (the cart is cleared below, which would otherwise bounce back to the catalog).
+    try {
+      sessionStorage.setItem('jj_last_order', JSON.stringify({
+        orderNo: orderNo.value,
+        total: finalTotal.value,
+        transfer: paidByTransfer.value,
+        ts: Date.now(),
+      }))
+    } catch {}
     // New key for the next order; this cart is done.
     sessionStorage.removeItem('jj_checkout_idem')
     cart.clear()

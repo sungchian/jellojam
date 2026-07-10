@@ -48,9 +48,9 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 })()
 
 // ── i18n ──────────────────────────────────────────────────────────────────
-// Chinese-first site: always start in 中文, ignore any stale localStorage value
-localStorage.removeItem('jj_lang')
-const savedLang = 'zh'
+// Chinese-first site：預設中文，但尊重顧客用語言切換鈕做過的選擇（jj_lang）。
+// 只認 'en'，其他值一律回中文。
+const savedLang = localStorage.getItem('jj_lang') === 'en' ? 'en' : 'zh'
 
 export const i18n = createI18n({
   legacy:        false,

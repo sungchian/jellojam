@@ -107,7 +107,7 @@
       <main class="catalog-main">
         <!-- Search bar (if searchQ active) -->
         <div v-if="searchQ" class="search-info">
-          {{ t('catalog.price_query') }}「<strong>{{ searchQ }}</strong>」
+          {{ t('catalog.search') }}「<strong>{{ searchQ }}</strong>」
           <button class="clear-search-btn" @click="searchQ = ''; page = 1">✕</button>
         </div>
 
@@ -167,7 +167,8 @@
                 </span>
                 <div class="price-row">
                   <span class="card-price">
-                    NT$ {{ formatPrice(product.store_price) }}
+                    <!-- public_catalog 對無定價商品回傳 store_price=0，一律視為「價格洽詢」 -->
+                    {{ product.store_price > 0 ? `NT$ ${formatPrice(product.store_price)}` : t('catalog.price_query') }}
                   </span>
                   <span class="sold-count">{{ t('catalog.sold_count', { n: product.sold_qty ?? 0 }) }}</span>
                 </div>
@@ -177,10 +178,12 @@
               <div class="card-footer">
                 <button
                   class="add-cart-btn"
-                  :disabled="product.current_stock <= 0"
+                  :disabled="product.current_stock <= 0 || !(product.store_price > 0)"
                   @click.stop="addToCart(product)"
                 >
-                  {{ product.current_stock <= 0 ? t('catalog.sold_out') : t('catalog.add_cart') }}
+                  {{ product.current_stock <= 0
+                    ? t('catalog.sold_out')
+                    : !(product.store_price > 0) ? t('catalog.price_query') : t('catalog.add_cart') }}
                 </button>
               </div>
             </div>
@@ -261,7 +264,7 @@
           </div>
 
           <div class="sheet-footer">
-            <button class="clear-all-btn" @click="clearFilters; mobileSheetOpen = false">{{ t('catalog.clear') }}</button>
+            <button class="clear-all-btn" @click="clearFilters(); mobileSheetOpen = false">{{ t('catalog.clear') }}</button>
             <button class="confirm-btn" @click="mobileSheetOpen = false">{{ t('catalog.apply') }}</button>
           </div>
         </div>
@@ -427,7 +430,8 @@ const sorted = computed(() => {
   const list = [...filtered.value]
   switch (sortKey.value) {
     case 'hot':        return list.sort((a, b) => (b.sold_qty ?? 0) - (a.sold_qty ?? 0))
-    case 'new':        return list.sort((a, b) => b.id - a.id)
+    // public_catalog() 沒有 created_at 等時間欄位，id 是 UUID，退而用字串比較求穩定排序
+    case 'new':        return list.sort((a, b) => String(b.id).localeCompare(String(a.id)))
     case 'price_asc':  return list.sort((a, b) => (a.store_price ?? 0) - (b.store_price ?? 0))
     case 'price_desc': return list.sort((a, b) => (b.store_price ?? 0) - (a.store_price ?? 0))
     default:           return list
@@ -492,11 +496,15 @@ const clearFilters = () => {
 const addToCart = (product) => {
   const result = cart.addItem(product, 1)
   if (result === 'added') {
-    showToast(`${product.product_name} 已加入購物車`, 'success')
+    showToast(t('cart.added', { name: product.product_name }), 'success')
+  } else if (result === 'added_capped') {
+    showToast(t('cart.added_capped'), 'success')
   } else if (result === 'capped') {
-    showToast('已達到庫存上限，無法再增加數量', 'error')
+    showToast(t('cart.stock_capped'), 'error')
+  } else if (result === 'no_price') {
+    showToast(t('cart.no_price'), 'error')
   } else if (result === 'out_of_stock') {
-    showToast('商品已售完', 'error')
+    showToast(t('cart.item_sold_out'), 'error')
   }
 }
 
