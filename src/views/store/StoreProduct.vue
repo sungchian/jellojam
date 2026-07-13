@@ -1,8 +1,21 @@
 <template>
   <div class="product-page">
 
+    <!-- Loading (public catalog RPC still in flight) -->
+    <div v-if="!product && !appData.publicCatalogLoaded && !appData.publicCatalogError" class="not-found">
+      <div class="not-found-icon">⏳</div>
+      <h2 class="not-found-title">{{ t('catalog.loading') }}</h2>
+    </div>
+
+    <!-- Catalog RPC failed — show error + retry, not a misleading "not found" -->
+    <div v-else-if="!product && appData.publicCatalogError" class="not-found">
+      <div class="not-found-icon">⚠️</div>
+      <h2 class="not-found-title">{{ t('catalog.load_error') }}</h2>
+      <button class="back-btn" @click="appData.fetchPublicCatalog()">{{ t('catalog.retry') }}</button>
+    </div>
+
     <!-- Product Not Found -->
-    <div v-if="!product" class="not-found">
+    <div v-else-if="!product" class="not-found">
       <div class="not-found-icon">😢</div>
       <h2 class="not-found-title">{{ t('product.not_found') }}</h2>
       <p class="not-found-sub">{{ t('product.back') }}</p>
@@ -67,7 +80,8 @@
 
           <!-- Price -->
           <div class="price-row">
-            <span class="price" v-if="product.store_price != null">
+            <!-- public_catalog 對無定價商品回傳 store_price=0，一律視為「價格洽詢」 -->
+            <span class="price" v-if="product.store_price > 0">
               NT$ {{ formatPrice(product.store_price) }}
             </span>
             <span class="price price-consult" v-else>{{ t('product.price_query') }}</span>
@@ -108,12 +122,12 @@
           <div class="cta-row">
             <button
               class="cta-btn cta-outline"
-              :disabled="product.current_stock <= 0"
+              :disabled="product.current_stock <= 0 || !(product.store_price > 0)"
               @click="addToCartOnly"
-            >{{ t('product.add_cart') }}</button>
+            >{{ !(product.store_price > 0) ? t('product.price_query') : t('product.add_cart') }}</button>
             <button
               class="cta-btn cta-solid"
-              :disabled="product.current_stock <= 0"
+              :disabled="product.current_stock <= 0 || !(product.store_price > 0)"
               @click="buyNow"
             >{{ t('product.buy_now') }}</button>
           </div>
@@ -171,7 +185,7 @@
             </div>
             <div class="related-body">
               <p class="related-name">{{ rel.product_name }}</p>
-              <p class="related-price" v-if="rel.store_price != null">
+              <p class="related-price" v-if="rel.store_price > 0">
                 NT$ {{ formatPrice(rel.store_price) }}
               </p>
               <p class="related-price" v-else>{{ t('product.price_query') }}</p>
@@ -184,7 +198,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppDataStore } from '@/stores/appData'
@@ -230,8 +244,9 @@ const infoOpen        = ref(true)
 const storeProducts = computed(() => appData.storeProducts || [])
 
 const product = computed(() => {
-  const id = Number(route.params.id)
-  return storeProducts.value.find(p => p.id === id) || null
+  // product id 是 UUID 字串，直接用字串比對
+  const id = String(route.params.id)
+  return storeProducts.value.find(p => String(p.id) === id) || null
 })
 
 // Update meta tags whenever product loads (storeProducts may arrive async)
@@ -273,11 +288,15 @@ const decQty = () => { if (qty.value > 1) qty.value-- }
 // ── Actions ────────────────────────────────────────────────────────────────
 function handleAddResult(result, name) {
   if (result === 'added') {
-    showToast(`${name} 已加入購物車`, 'success')
+    showToast(t('cart.added', { name }), 'success')
+  } else if (result === 'added_capped') {
+    showToast(t('cart.added_capped'), 'success')
   } else if (result === 'capped') {
-    showToast('已達到庫存上限，無法再增加數量', 'error')
+    showToast(t('cart.stock_capped'), 'error')
+  } else if (result === 'no_price') {
+    showToast(t('cart.no_price'), 'error')
   } else if (result === 'out_of_stock') {
-    showToast('商品已售完', 'error')
+    showToast(t('cart.item_sold_out'), 'error')
   }
 }
 
@@ -287,11 +306,18 @@ const addToCartOnly = () => {
   handleAddResult(result, product.value.product_name)
 }
 
+let buyNowTimer = null
+onUnmounted(() => clearTimeout(buyNowTimer))
+
 const buyNow = () => {
   if (!product.value || product.value.current_stock <= 0) return
   const result = cart.addItem(product.value, qty.value)
   if (result === 'added') {
     router.push('/store/cart')
+  } else if (result === 'added_capped') {
+    // 數量被砍到庫存上限 — 先讓顧客看到提示再進購物車，避免靜默少件
+    showToast(t('cart.added_capped'), 'success')
+    buyNowTimer = setTimeout(() => router.push('/store/cart'), 900)
   } else {
     handleAddResult(result, product.value.product_name)
   }

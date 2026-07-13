@@ -35,7 +35,7 @@
           </div>
           <div class="hero-info">
             <h2 class="hero-name">{{ auth.displayName }}</h2>
-            <p class="hero-email">{{ auth.customer?.email || auth.user?.email || '' }}</p>
+            <p class="hero-email">{{ realEmail(auth.customer?.email) || realEmail(auth.user?.email) }}</p>
             <span class="tier-badge" :style="{ background: auth.tier.color + '22', color: auth.tier.color }">
               {{ auth.tier.label }}
             </span>
@@ -121,8 +121,8 @@
               </div>
               <div class="order-head-right">
                 <span class="order-date">{{ order.sales_date }}</span>
-                <span class="order-total" v-if="order.payment_amount">
-                  NT$ {{ Number(order.payment_amount).toLocaleString() }}
+                <span class="order-total" v-if="orderTotal(order)">
+                  NT$ {{ orderTotal(order).toLocaleString() }}
                 </span>
                 <span class="expand-icon">{{ expandedOrder === order.id ? '▲' : '▼' }}</span>
               </div>
@@ -130,7 +130,11 @@
             <div v-if="expandedOrder === order.id" class="order-body">
 
               <!-- ── Status Timeline ── -->
-              <div class="order-timeline">
+              <div v-if="order.status === '已併單'" class="merged-note">
+                <span class="merged-badge">🔗 已併單</span>
+                <span class="merged-hint">此訂單已合併至其他訂單</span>
+              </div>
+              <div v-else class="order-timeline">
                 <div
                   v-for="(step, i) in ORDER_STEPS"
                   :key="step.key"
@@ -138,12 +142,12 @@
                   :class="{
                     'tl-done':    isStepDone(order.status, step.key),
                     'tl-active':  isStepActive(order.status, step.key),
-                    'tl-cancelled': order.status === '已取消',
+                    'tl-cancelled': order.status === '顧客已取消',
                   }"
                 >
                   <div class="tl-dot">
                     <span class="tl-icon">
-                      {{ order.status === '已取消' && i === 0 ? '✕' : (isStepDone(order.status, step.key) ? '✓' : step.icon) }}
+                      {{ order.status === '顧客已取消' && i === 0 ? '✕' : (isStepDone(order.status, step.key) ? '✓' : step.icon) }}
                     </span>
                   </div>
                   <div v-if="i < ORDER_STEPS.length - 1" class="tl-line"
@@ -166,10 +170,6 @@
               <div class="order-detail-row" v-if="order.logistics_name">
                 <span class="od-label">取貨門市</span>
                 <span>{{ order.logistics_name }}</span>
-              </div>
-              <div class="order-detail-row" v-if="order.tracking_no">
-                <span class="od-label">物流單號</span>
-                <span class="tracking-no">{{ order.tracking_no }}</span>
               </div>
               <div class="order-detail-row" v-if="order.note">
                 <span class="od-label">備註</span>
@@ -298,12 +298,12 @@
             <input
               v-model="profileForm.email"
               class="field-input"
-              :class="{ locked: auth.isOAuth }"
+              :class="{ locked: auth.isGoogleAuth }"
               placeholder="your@email.com"
               type="email"
-              :disabled="auth.isOAuth || profileSaving"
+              :disabled="auth.isGoogleAuth || profileSaving"
             />
-            <span v-if="auth.isOAuth" class="field-hint">Email 由 Google 帳號管理，無法修改</span>
+            <span v-if="auth.isGoogleAuth" class="field-hint">Email 由 Google 帳號管理，無法修改</span>
             <span v-else-if="profileForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(profileForm.email)"
               class="field-hint" style="color:#ef4444">
               請輸入正確的 Email 格式
@@ -336,19 +336,20 @@
           <div class="sb-title">登入方式</div>
           <div class="sb-row">
             <div class="sb-icon">
-              <svg v-if="auth.isOAuth" viewBox="0 0 24 24" width="20" height="20">
+              <svg v-if="auth.isGoogleAuth" viewBox="0 0 24 24" width="20" height="20">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
+              <span v-else-if="auth.isLineAuth">💬</span>
               <span v-else>🔑</span>
             </div>
             <div>
-              <div class="sb-name">{{ auth.isOAuth ? 'Google 帳號' : '姓名 / LINE ID 登入' }}</div>
-              <div class="sb-sub">{{ auth.customer?.email || '傳統登入模式' }}</div>
+              <div class="sb-name">{{ auth.isGoogleAuth ? 'Google 帳號' : (auth.isLineAuth ? 'LINE 帳號' : 'Email 登入') }}</div>
+              <div class="sb-sub">{{ (auth.isLineAuth && auth.customer?.line_user_id) || auth.customer?.email || '' }}</div>
             </div>
-            <span class="sb-tag linked">{{ auth.isOAuth ? '✓ 已連結' : '傳統模式' }}</span>
+            <span class="sb-tag linked">✓ 已連結</span>
           </div>
         </div>
 
@@ -471,23 +472,24 @@ const TABS = [
 
 // Order status timeline — keys must match statuses used in orders table
 const ORDER_STEPS = [
-  { key: '待確認',  label: '待確認',  icon: '📋' },
-  { key: '處理中',  label: '備貨中',  icon: '📦' },
-  { key: '已出貨',  label: '已出貨',  icon: '🚚' },
-  { key: '已完成',  label: '已完成',  icon: '✅' },
+  { key: '已填表單',   label: '已填表單',   icon: '📋' },
+  { key: '在美現貨',   label: '在美現貨',   icon: '🇺🇸' },
+  { key: '台灣待出貨', label: '台灣待出貨', icon: '📦' },
+  { key: '已出貨',     label: '已出貨',     icon: '🚚' },
+  { key: '已完成',     label: '已完成',     icon: '✅' },
 ]
 
-const STATUS_ORDER = { '待確認': 0, '已填表單': 0, '處理中': 1, '已出貨': 2, '已完成': 3 }
+const STATUS_ORDER = { '已填表單': 0, '在美現貨': 1, '台灣待出貨': 2, '已出貨': 3, '已完成': 4 }
 
 function isStepDone(orderStatus, stepKey) {
-  if (orderStatus === '已取消') return false
+  if (orderStatus === '顧客已取消') return false
   const orderIdx = STATUS_ORDER[orderStatus] ?? -1
   const stepIdx  = STATUS_ORDER[stepKey]  ?? 0
   return orderIdx > stepIdx
 }
 
 function isStepActive(orderStatus, stepKey) {
-  if (orderStatus === '已取消') return stepKey === '待確認'
+  if (orderStatus === '顧客已取消') return stepKey === '已填表單'
   const orderIdx = STATUS_ORDER[orderStatus] ?? 0
   const stepIdx  = STATUS_ORDER[stepKey]  ?? 0
   return orderIdx === stepIdx
@@ -501,7 +503,7 @@ const expandedOrder = ref(null)
 // Orders
 const orders        = ref([])
 const ordersLoading = ref(false)
-const orderCount    = computed(() => orders.value.length)
+const orderCount    = ref(0)   // exact total (list below is capped at 30)
 
 // Points / Redemption
 const redeemingId   = ref(null)
@@ -560,6 +562,13 @@ async function loadOrders() {
 
     const rows = orderRows || []
 
+    // Exact total for the stat card — the list itself is capped at 30
+    const { count, error: cntErr } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', auth.customer.id)
+    orderCount.value = (!cntErr && count != null) ? count : rows.length
+
     if (!rows.length) {
       orders.value = []
       return
@@ -616,13 +625,22 @@ async function loadAuditLog() {
   auditLoading.value = false
 }
 
+// LINE-only 帳號的 auth email 是合成信箱（line_xxx@line.jellojam.local），不是
+// 顧客真實 Email — 不顯示、不預填、也絕不寫回 customers.email。
+function isSyntheticEmail(v) {
+  return typeof v === 'string' && v.trim().toLowerCase().endsWith('@line.jellojam.local')
+}
+function realEmail(v) {
+  return v && !isSyntheticEmail(v) ? v : ''
+}
+
 function fillProfileForm() {
   const c = auth.customer
   if (!c) return
   profileForm.display_name  = c.display_name || ''
   profileForm.phone         = c.phone         || ''
   profileForm.line_user_id  = c.line_user_id  || ''
-  profileForm.email         = c.email         || auth.user?.email || ''
+  profileForm.email         = realEmail(c.email) || realEmail(auth.user?.email)
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -711,7 +729,7 @@ async function saveProfile() {
     }
 
     // Validate email if provided
-    if (!auth.isOAuth && profileForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(profileForm.email.trim())) {
+    if (!auth.isGoogleAuth && profileForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(profileForm.email.trim())) {
       profileMsg.value     = 'Email 格式不正確'
       profileMsgType.value = 'error'
       return
@@ -723,7 +741,9 @@ async function saveProfile() {
     }
     if (profileForm.phone.trim())        update.phone        = profileForm.phone.trim()
     if (profileForm.line_user_id.trim()) update.line_user_id = profileForm.line_user_id.trim()
-    if (!auth.isOAuth && profileForm.email.trim()) update.email = profileForm.email.trim()
+    if (!auth.isGoogleAuth && profileForm.email.trim() && !isSyntheticEmail(profileForm.email)) {
+      update.email = profileForm.email.trim()
+    }
 
     const { error } = await supabase
       .from('customers')
@@ -780,13 +800,24 @@ async function handleLogoutAll() {
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
+// Order total = Σ(items selling_price × qty); payment_amount only as fallback
+function orderTotal(order) {
+  const items = order.order_items || []
+  if (items.length) {
+    return items.reduce((sum, it) => sum + Number(it.selling_price || 0) * Number(it.qty || 0), 0)
+  }
+  return Number(order.payment_amount) || 0
+}
+
 function statusCls(s) {
   return {
-    'st-pending':    s === '待確認' || s === '已填表單',
-    'st-processing': s === '處理中',
+    'st-pending':    s === '已填表單',
+    'st-processing': s === '在美現貨',
+    'st-ready':      s === '台灣待出貨',
     'st-shipped':    s === '已出貨',
     'st-done':       s === '已完成',
-    'st-cancelled':  s === '已取消',
+    'st-cancelled':  s === '顧客已取消',
+    'st-merged':     s === '已併單',
   }
 }
 
@@ -815,6 +846,7 @@ function deviceIcon(ua) {
 
 const AUDIT_MAP = {
   login:         { label: '登入成功',     icon: '✅' },
+  login_line:    { label: 'LINE 登入',    icon: '💬' },
   login_by_name: { label: '姓名登入',     icon: '🔑' },
   login_failed:  { label: '登入失敗',     icon: '❌' },
   logout:        { label: '登出',         icon: '👋' },
@@ -1014,6 +1046,10 @@ watch(() => auth.customer, () => fillProfileForm(), { deep: true })
   border-color: #f87171;
 }
 .tl-step.tl-cancelled .tl-label { color: #b91c1c; }
+/* Merged order — no timeline, badge only */
+.merged-note { display: flex; align-items: center; gap: 10px; padding: 16px 4px 12px; }
+.merged-badge { background: #ede9fe; color: #6d28d9; font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 999px; white-space: nowrap; }
+.merged-hint { font-size: 12px; color: var(--jj-text-sub); }
 /* Tracking number */
 .tracking-no {
   font-family: monospace;
@@ -1033,9 +1069,11 @@ watch(() => auth.customer, () => fillProfileForm(), { deep: true })
 .order-status { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
 .st-pending    { background: #fef9c3; color: #854d0e; }
 .st-processing { background: #dbeafe; color: #1d4ed8; }
+.st-ready      { background: #cffafe; color: #0e7490; }
 .st-shipped    { background: #d1fae5; color: #065f46; }
 .st-done       { background: #f3f4f6; color: #374151; }
 .st-cancelled  { background: #fee2e2; color: #b91c1c; }
+.st-merged     { background: #ede9fe; color: #6d28d9; }
 .order-date { font-size: 12px; color: var(--jj-text-sub); }
 .order-total { font-size: 14px; font-weight: 700; color: var(--jj-rose-dark); }
 .expand-icon { font-size: 11px; color: var(--jj-text-sub); }

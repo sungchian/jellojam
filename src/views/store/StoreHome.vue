@@ -32,7 +32,7 @@
       <!-- ─────────────── 3. 熱銷排行 ─────────────── -->
       <section class="section">
         <div class="section-head">
-          <h2 class="section-title">🔥 {{ t('home.hot_title') }}</h2>
+          <h2 class="section-title">{{ t('home.hot_title') }}</h2>
           <RouterLink to="/store/catalog" class="section-more">{{ t('catalog.filter') }} →</RouterLink>
         </div>
         <p class="section-sub">{{ t('home.hot_sub') }}</p>
@@ -57,7 +57,7 @@
             <li><span class="rule-dot">✦</span> {{ t('home.points_rule3') }} <span class="tier-badge gold">{{ t('home.tier_gold') }}</span></li>
             <li><span class="rule-dot">✦</span> {{ t('home.points_rule4') }} <span class="tier-badge platinum">{{ t('home.tier_platinum') }}</span></li>
           </ul>
-          <RouterLink :to="auth.isLoggedIn ? `/store/member/${auth.customer?.id}` : '/store/auth'" class="points-cta">{{ t('home.featured_sub') }}</RouterLink>
+          <RouterLink :to="auth.isLoggedIn ? `/store/member/${auth.customer?.id}` : '/store/auth'" class="points-cta">{{ t('home.join_now') }}</RouterLink>
         </div>
         <div class="points-right">
           <div class="tier-display">
@@ -83,7 +83,7 @@
       <!-- ─────────────── 5. 精選推薦 ─────────────── -->
       <section class="section">
         <div class="section-head">
-          <h2 class="section-title">✨ {{ t('home.featured_title') }}</h2>
+          <h2 class="section-title">{{ t('home.featured_title') }}</h2>
           <RouterLink to="/store/catalog" class="section-more">{{ t('catalog.filter') }} →</RouterLink>
         </div>
         <p class="section-sub">{{ t('home.featured_sub') }}</p>
@@ -166,18 +166,13 @@ const quickCats = computed(() =>
   }))
 )
 
-// ── storeProducts: derived from mockInventory ─────────────────────────────────
+// ── storeProducts: 與目錄頁同源（public_catalog RPC，欄位含 store_price）───────
 const storeProducts = computed(() =>
-  store.mockInventory.map(inv => ({
-    id:                  inv.id || inv.product_id,
-    product_name:        inv.product_name,
-    jellycat_category:   inv.jellycat_category,
-    store_price:         inv.avg_cost_twd > 0 ? Math.round(inv.avg_cost_twd * 1.35) : null,
-    current_stock:       inv.current_stock,
-    sold_qty:            inv.sold_qty || 0,
-    in_stock:            inv.current_stock > 0,
-    gradient:            CATEGORY_GRADIENT_MAP[inv.jellycat_category] || CATEGORY_GRADIENT_MAP.Other,
-    emoji:               CATEGORY_EMOJI_MAP[inv.jellycat_category]    || '🧸',
+  (store.storeProducts || []).map(p => ({
+    ...p,
+    sold_qty: p.sold_qty || 0,
+    gradient: CATEGORY_GRADIENT_MAP[p.jellycat_category] || CATEGORY_GRADIENT_MAP.Other,
+    emoji:    CATEGORY_EMOJI_MAP[p.jellycat_category]    || '🧸',
   }))
 )
 
@@ -199,17 +194,17 @@ const newProducts = computed(() =>
 // ── Add to Cart ───────────────────────────────────────────────────────────────
 function addToCart(product) {
   if (!product.in_stock) return
-  const result = cart.addItem({
-    id:           product.id,
-    product_name: product.product_name,
-    price:        product.store_price || 0,
-    stock:        product.current_stock,
-    category_zh:  t('categories.' + product.jellycat_category, product.jellycat_category),
-  })
+  const result = cart.addItem(product)
   if (result === 'added') {
-    showToast(`${product.product_name} 已加入購物車`, 'success')
+    showToast(t('cart.added', { name: product.product_name }), 'success')
+  } else if (result === 'added_capped') {
+    showToast(t('cart.added_capped'), 'success')
   } else if (result === 'capped') {
-    showToast('已達到庫存上限，無法再增加數量', 'error')
+    showToast(t('cart.stock_capped'), 'error')
+  } else if (result === 'no_price') {
+    showToast(t('cart.no_price'), 'error')
+  } else if (result === 'out_of_stock') {
+    showToast(t('cart.item_sold_out'), 'error')
   }
 }
 
@@ -259,12 +254,14 @@ const ProductCard = defineComponent({
             h('div', { class: 'product-price' }, priceText),
           ]),
 
-          // Add to cart button
+          // Add to cart button（無價商品 = 價格洽詢，disable；store_price=0 也算無價）
           h('button', {
-            class: ['add-to-cart-btn', !p.in_stock ? 'disabled' : ''],
-            disabled: !p.in_stock,
+            class: ['add-to-cart-btn', (!p.in_stock || !(p.store_price > 0)) ? 'disabled' : ''],
+            disabled: !p.in_stock || !(p.store_price > 0),
             onClick: () => emit('add', p),
-          }, p.in_stock ? `${t('catalog.add_cart')} 🛍️` : t('catalog.sold_out')),
+          }, !p.in_stock
+            ? t('catalog.sold_out')
+            : !(p.store_price > 0) ? t('catalog.price_query') : `${t('catalog.add_cart')} 🛍️`),
         ]),
       ])
     }

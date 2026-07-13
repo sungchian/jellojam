@@ -92,7 +92,7 @@
             active-class=""
             exact-active-class=""
             :class="{ 'cat-active': route.path === '/store/catalog' }"
-          >商品分類 <span class="cat-arrow">▾</span></RouterLink>
+          >{{ t('nav.categories') }} <span class="cat-arrow">▾</span></RouterLink>
 
           <div class="cat-dropdown">
 
@@ -103,12 +103,12 @@
                 <span class="drop-chevron">›</span>
               </RouterLink>
               <div class="drop-sub">
-                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'bunnies'    } }" class="drop-sub-item">🐰 兔兔專區</RouterLink>
-                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'amuseables' } }" class="drop-sub-item">🎪 趣味系列</RouterLink>
-                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'animals'    } }" class="drop-sub-item">🦁 動物系列</RouterLink>
-                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'baby'       } }" class="drop-sub-item">🍼 寶寶專區</RouterLink>
-                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'charms'     } }" class="drop-sub-item">🎒 背包吊飾專區</RouterLink>
-                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'limited'    } }" class="drop-sub-item">✨ 限定專區</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'bunnies'    } }" class="drop-sub-item">{{ t('nav.g_bunnies') }}</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'amuseables' } }" class="drop-sub-item">{{ t('nav.g_amuseables') }}</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'animals'    } }" class="drop-sub-item">{{ t('nav.g_animals') }}</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'baby'       } }" class="drop-sub-item">{{ t('nav.g_baby') }}</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'charms'     } }" class="drop-sub-item">{{ t('nav.g_charms') }}</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'limited'    } }" class="drop-sub-item">{{ t('nav.g_limited') }}</RouterLink>
               </div>
             </div>
 
@@ -119,8 +119,8 @@
                 <span class="drop-chevron">›</span>
               </RouterLink>
               <div class="drop-sub">
-                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'traderjoes', cat: '零食'  } }" class="drop-sub-item">🍪 零食</RouterLink>
-                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'traderjoes', cat: '保養品' } }" class="drop-sub-item">🧴 保養品</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'traderjoes', cat: '零食'  } }" class="drop-sub-item">{{ t('nav.tj_snacks') }}</RouterLink>
+                <RouterLink :to="{ path: '/store/catalog', query: { brand: 'traderjoes', cat: '保養品' } }" class="drop-sub-item">{{ t('nav.tj_skincare') }}</RouterLink>
               </div>
             </div>
 
@@ -133,7 +133,7 @@
           active-class=""
           exact-active-class=""
           :class="{ 'cat-active': route.path === '/store/catalog' && route.query.sort === 'new' }"
-        >新品推薦</RouterLink>
+        >{{ t('nav.new') }}</RouterLink>
 
         <RouterLink
           :to="{ path: '/store/catalog', query: { stock: 'in_stock' } }"
@@ -141,7 +141,7 @@
           active-class=""
           exact-active-class=""
           :class="{ 'cat-active': route.path === '/store/catalog' && route.query.stock === 'in_stock' }"
-        >現貨專區</RouterLink>
+        >{{ t('nav.in_stock') }}</RouterLink>
 
         <RouterLink
           to="/store/journal"
@@ -149,7 +149,7 @@
           active-class=""
           exact-active-class=""
           :class="{ 'cat-active': route.path.startsWith('/store/journal') }"
-        >JelloJam日記</RouterLink>
+        >{{ t('nav.journal') }}</RouterLink>
 
         <RouterLink
           to="/store/membership"
@@ -157,7 +157,7 @@
           active-class=""
           exact-active-class=""
           :class="{ 'cat-active': route.path === '/store/membership' }"
-        >會員制度</RouterLink>
+        >{{ t('nav.membership') }}</RouterLink>
 
         <RouterLink
           to="/store/news"
@@ -165,7 +165,7 @@
           active-class=""
           exact-active-class=""
           :class="{ 'cat-active': route.path === '/store/news' }"
-        >最新消息</RouterLink>
+        >{{ t('nav.news') }}</RouterLink>
 
         <RouterLink
           to="/store/order-tracking"
@@ -173,7 +173,7 @@
           active-class=""
           exact-active-class=""
           :class="{ 'cat-active': route.path === '/store/order-tracking' }"
-        >📦 訂單查詢</RouterLink>
+        >📦 {{ t('nav.tracking') }}</RouterLink>
 
       </div>
     </nav>
@@ -195,7 +195,7 @@
             <img src="/logo.svg" alt="JelloJam" class="footer-logo-img" />
           </div>
           <p class="footer-tagline">{{ t('footer.tagline') }}</p>
-          <a href="#" class="line-btn">
+          <a :href="LINE_URL" target="_blank" rel="noopener" class="line-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.477 2 2 6.208 2 11.423c0 4.661 3.671 8.557 8.637 9.285.337.073.795.224.912.514.105.263.069.675.034.94l-.148.89c-.045.268-.209 1.046.916.57 1.125-.476 6.067-3.573 8.277-6.117C22.057 15.174 22 13.327 22 11.423 22 6.208 17.523 2 12 2z"/>
             </svg>
@@ -206,7 +206,8 @@
         <div class="footer-col">
           <div class="footer-col-title">{{ t('footer.products') }}</div>
           <RouterLink to="/store/catalog" class="footer-link">{{ t('footer.all') }}</RouterLink>
-          <RouterLink to="/store/catalog?cat=Bunnies" class="footer-link">{{ t('footer.bunnies') }}</RouterLink>
+          <!-- 兔兔用 group=bunnies（涵蓋 Bashful 等變體分類）；Bears/Dogs 本身就是精確分類名 -->
+          <RouterLink :to="{ path: '/store/catalog', query: { brand: 'jellycat', group: 'bunnies' } }" class="footer-link">{{ t('footer.bunnies') }}</RouterLink>
           <RouterLink to="/store/catalog?cat=Bears"   class="footer-link">{{ t('footer.bears') }}</RouterLink>
           <RouterLink to="/store/catalog?cat=Dogs"    class="footer-link">{{ t('footer.dogs') }}</RouterLink>
         </div>
@@ -217,7 +218,7 @@
           <RouterLink :to="member.isLoggedIn ? `/store/member/${member.customer?.id}` : '/store/auth'" class="footer-link">{{ t('footer.points') }}</RouterLink>
           <RouterLink to="/store/cart"           class="footer-link">{{ t('footer.cart') }}</RouterLink>
           <RouterLink to="/store/order-tracking" class="footer-link">📦 {{ t('footer.tracking') }}</RouterLink>
-          <a href="#" class="footer-link">{{ t('footer.contact') }}</a>
+          <a :href="LINE_URL" target="_blank" rel="noopener" class="footer-link">{{ t('footer.contact') }}</a>
         </div>
       </div>
 
@@ -242,19 +243,20 @@ import { useAppDataStore }     from '@/stores/appData'
 import ToastContainer          from '@/components/store/ToastContainer.vue'
 
 const { t, locale } = useI18n()
+
+// 官方 LINE 連結（與結帳成功頁 BANK_INFO.line_url 同源；⚠️ 若更換官方帳號要一起改）
+const LINE_URL = 'https://line.me/ti/p/~@685evhie'
 const cart   = useCartStore()
 const member = useStoreAuthStore()
 const store  = useAppDataStore()
 const router = useRouter()
 const route  = useRoute()
 
-// Force Chinese on every store entry — clears any stale English state
-locale.value = 'zh'
-localStorage.removeItem('jj_lang')
-
 // ── Language toggle ──────────────────────────────────────────────────────
+// 顧客的選擇持久化到 jj_lang（main.js 開站時讀取），重整/回站不再被重設回中文。
 function toggleLang() {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
+  try { localStorage.setItem('jj_lang', locale.value) } catch {}
 }
 
 // ── Scroll shadow ────────────────────────────────────────────────────────
@@ -751,6 +753,15 @@ watch(() => cart.totalQty, (newVal, oldVal) => {
   .search-wrap  { max-width: 340px; }
   .logo-img     { height: 34px; }
   .footer-inner { grid-template-columns: 1fr 1fr; gap: 28px; }
+}
+
+@media (max-width: 768px) {
+  /* 手機：7 個 nowrap 分類連結會超出螢幕 → 導覽列自己橫向捲動，
+     不讓整頁出現橫向捲軸。觸控裝置沒有 hover，dropdown 一併停用
+     （「商品分類」連結本身仍可點進目錄頁）。 */
+  .cat-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .cat-nav::-webkit-scrollbar { display: none; }
+  .cat-has-dropdown .cat-dropdown { display: none !important; }
 }
 
 @media (max-width: 600px) {

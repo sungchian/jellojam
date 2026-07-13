@@ -37,6 +37,9 @@
 ## 應用層關鍵 RPC（前端呼叫這些，別再直接寫表）
 - `create_storefront_order(p_payload jsonb)` — 前台下單。伺服器重算價格/運費/加購/優惠、檢查庫存、冪等。**結帳走這支，不要直接 insert orders**。
 - `public_catalog()` — 匿名安全商品目錄（只回商品層級彙總，無 PII）。前台商品頁資料來源。
+  ⚠️ **無定價商品的 `store_price` 回傳 `0`，不是 `null`**（2026-07-10 anon 實測：389 列中 208 列為 0）。前端「價格洽詢」判斷必須用 `!(store_price > 0)`，用 `== null` 是死碼。
+- `get_order_status_by_no(p_order_no)` — 公開訂單查詢頁**唯一**合法資料來源（anon 可呼叫，SECURITY DEFINER）。回傳欄位：`order_no, status, payment_status, created_at, items_summary`（jsonb `[{product_name, qty}]`）。**沒有** sales_date/payment_amount/tracking_no/logistics_name。定義在 `supabase/migrations/20260527_p1_search.sql`。
+- ⚠️ 生產 DB **沒有 `create_order` 函式**（2026-07-10 實測 PGRST202）。repo 內 `20260701_p1_hardening.sql` 的 `create_order`（引用不存在的 `products.price`）從未部署，只是殘稿，不要拿它推斷伺服器行為。
 - `redeem_points(p_reward_name, p_cost)` — 點數兌換（顧客不能直接改 `current_points`，有 `guard_customer_points` trigger 擋）。
 - `exchange_line_token(p_state)` — LINE 回呼用 state 換 customer_id + token_hash。
 - `merge_orders_transaction(p_primary_id, p_secondary_ids)` — 併單（僅員工）。
@@ -62,7 +65,11 @@ supabase functions deploy super-service --no-verify-jwt --project-ref iifhubablh
 - 本次資安修補的 SQL 在 repo 上一層 `../EMERGENCY_*.sql`、`../FIX_*.sql`（**未納版控**），對應邏輯已套用到線上 DB。完整報告 `../REVIEW_REPORT.md`、`../findings.json`。
   ⚠️ 這些檔在 git repo 之外、未同步，未來**可能已不存在——找不到屬正常，不必當缺失去追**。線上 DB 的實際狀態才是真相，一律用 `SUPABASE_ACCESS.md` 直查為準。
 
+## 環境注意（2026-07-10）
+- **這台機器上 `.env.service` 不存在**、`SUPABASE_SERVICE_ROLE_KEY` 未設 → SUPABASE_ACCESS.md 的直連 DB 範本目前不可用，只剩 anon REST 可查。要直查 pg_policies / 函式定義需先補上金鑰檔。
+
 ## 驗證紀錄
 | 日期 | 驗證者 | 內容 |
 |------|--------|------|
 | 2026-07-02 | Fable 5 | 直連生產 DB 確認：全表 RLS 開啟、上述 RPC 存在、狀態字串、customer 分布、products 無 price |
+| 2026-07-10 | Fable 5 | anon REST 實測：public_catalog store_price=0（非 null）×208 列；get_order_status_by_no 存在且 anon 可呼叫；生產無 create_order；.env.service 缺失 |

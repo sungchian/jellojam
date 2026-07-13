@@ -38,6 +38,9 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
   const isLoggedIn   = computed(() => !!customer.value)
   const isOAuth      = computed(() => !!session.value)   // any Supabase session
   const isGoogleAuth = computed(() => user.value?.app_metadata?.provider === 'google')
+  // LINE users get a real Supabase session via magic-link (app_metadata.provider
+  // is 'email'), but the Edge Function stamps user_metadata.provider = 'line'.
+  const isLineAuth   = computed(() => user.value?.user_metadata?.provider === 'line')
   const displayName = computed(() => {
     if (!customer.value) return ''
     return customer.value.display_name || user.value?.email || '會員'
@@ -167,6 +170,12 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
 
   let _unsubscribe = null
 
+  // True while handleLineCustomer() drives the LINE flow — verifyOtp fires a
+  // SIGNED_IN event whose listener would otherwise duplicate audit + session.
+  // (supabase-js awaits listener callbacks inside verifyOtp, so the flag is
+  // still set when the listener runs.) Google/email logins never set it.
+  let _lineLoginInProgress = false
+
   async function init() {
     loading.value = true
 
@@ -214,17 +223,28 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
       //     exchange it explicitly. Safe/idempotent: skipped if no code, and
       //     getSession() below picks up whatever session this creates.
       const pkceCode = sessionStorage.getItem('jj_pkce_code')
+      let pkceFailed = false
       if (pkceCode) {
         sessionStorage.removeItem('jj_pkce_code')
         try {
-          await supabase.auth.exchangeCodeForSession(pkceCode)
+          // supabase-js v2 回傳 { error } 而非 throw — 兩種失敗形式都要接
+          const { error: exErr } = await supabase.auth.exchangeCodeForSession(pkceCode)
+          if (exErr) {
+            pkceFailed = true
+            console.warn('[storeAuth] PKCE exchange failed, code:', exErr?.code ?? 'unknown')
+          }
         } catch (e) {
+          pkceFailed = true
           console.warn('[storeAuth] PKCE exchange failed, code:', e?.code ?? 'unknown')
         }
       }
 
       // 2. Normal session restore (returning visitor / PKCE callback)
       const { data: { session: s } } = await supabase.auth.getSession()
+      // PKCE 失敗且沒有任何可用 session → 設 authError，callback 頁的
+      // watch(loading) 會立即導回登入頁顯示錯誤，而不是空等 10 秒「逾時」。
+      // （若仍有舊 session 可用就不設，避免把已登入者踢出去。）
+      if (pkceFailed && !s) authError.value = '登入驗證失敗，請重新嘗試'
       if (s) {
         session.value  = s
         user.value     = s.user
@@ -254,6 +274,9 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
       user.value    = s?.user ?? null
 
       if (event === 'SIGNED_IN' && s?.user) {
+        // LINE flow: handleLineCustomer() owns customer resolution + audit +
+        // session registration — skip here or we'd double-log the login.
+        if (_lineLoginInProgress) return
         const c = await _resolveCustomer(s.user)
         if (c?.is_banned) {
           authError.value = `帳號已被停用${c.ban_reason ? '：' + c.ban_reason : ''}`
@@ -407,6 +430,7 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
   async function handleLineCustomer(stateFromStorage) {
     authError.value = ''
     loading.value   = true
+    _lineLoginInProgress = true
 
     try {
       // 1. CSRF check — compare against what we generated before redirecting to LINE
@@ -448,12 +472,14 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
       customer.value = cust
       rl_clear()
       await _audit('login_line', { line_user_id: cust.line_user_id })
+      await _registerSession()
 
       return cust
     } catch (e) {
       authError.value = e.message
       throw e
     } finally {
+      _lineLoginInProgress = false
       loading.value = false
     }
   }
@@ -583,7 +609,7 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
     // State
     session, user, customer, loading, authError,
     // Computed
-    isLoggedIn, isOAuth, isGoogleAuth, displayName, avatarUrl,
+    isLoggedIn, isOAuth, isGoogleAuth, isLineAuth, displayName, avatarUrl,
     currentPoints, lifetimePoints, tier,
     // Actions
     init, destroy,

@@ -54,7 +54,7 @@
                 :value="item.qty"
                 :min="1"
                 :max="item.stock"
-                @change="e => updateQty(item.id, parseInt(e.target.value) || 1)"
+                @change="e => onQtyInput(item, e)"
               />
               <button
                 class="qty-btn"
@@ -134,6 +134,14 @@ const earnPoints = computed(() => cart.items.reduce((sum, item) => sum + item.qt
 
 function updateQty(id, qty) {
   cart.setQty(id, qty)
+}
+
+// 手動輸入數量：setQty 會 clamp 到庫存，但若 state 值沒變（原本就等於上限），
+// DOM 會殘留顧客打的大數字 — 一律以 clamp 後的實際值回寫 input。
+function onQtyInput(item, e) {
+  const wanted = Math.max(1, parseInt(e.target.value) || 1)
+  cart.setQty(item.id, wanted)
+  e.target.value = String(item.qty)
 }
 
 function removeItem(id) {
