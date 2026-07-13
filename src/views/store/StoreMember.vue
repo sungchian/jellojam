@@ -256,10 +256,10 @@
           <div v-for="r in redemptions" :key="r.id" class="redemption-row">
             <span class="r-emoji">🎁</span>
             <div class="r-info">
-              <span class="r-name">{{ r.metadata?.reward_name || '兌換品項' }}</span>
+              <span class="r-name">{{ r.reward_name }}</span>
               <span class="r-date">{{ formatDate(r.created_at) }}</span>
             </div>
-            <span class="r-cost">-{{ r.metadata?.points_cost }} 點</span>
+            <span class="r-cost">-{{ r.points_cost }} 點</span>
           </div>
         </div>
       </div>
@@ -603,14 +603,28 @@ async function loadOrders() {
 
 async function loadRedemptions() {
   if (!auth.customer?.id) return
-  const { data } = await supabase
-    .from('auth_audit_log')
-    .select('*')
+  // 讀權威的 points_transactions（redeem_points RPC 原子寫入處），而非先前
+  // 那個「盡力而為、失敗只 warn」的 auth_audit_log —— 否則點數已扣、兌換記錄
+  // 卻可能永遠不出現。顧客可讀自己的 ledger（RLS points_txn_customer_select）。
+  const { data, error } = await supabase
+    .from('points_transactions')
+    .select('id, created_at, points, note')
     .eq('customer_id', auth.customer.id)
-    .eq('action', 'redemption')
+    .eq('type', 'redeem')
     .order('created_at', { ascending: false })
     .limit(20)
-  redemptions.value = data || []
+  if (error) {
+    console.error('[redemptions] load error, code:', error?.code)
+    redemptions.value = []
+    return
+  }
+  // note 形如「兌換「品項名」」，抽出品項名；點數存負值，顯示取絕對值
+  redemptions.value = (data || []).map(r => ({
+    id:          r.id,
+    created_at:  r.created_at,
+    reward_name: r.note?.match(/「(.+)」/)?.[1] || '兌換品項',
+    points_cost: Math.abs(r.points || 0),
+  }))
 }
 
 async function loadSessions() {

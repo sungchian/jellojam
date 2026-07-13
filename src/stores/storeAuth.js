@@ -94,10 +94,33 @@ export const useStoreAuthStore = defineStore('storeAuth', () => {
   }
 
   /**
-   * Core: fetch or auto-create a customer row for this auth user.
-   * Priority: auth_user_id match → email match (link) → create new.
+   * Fetch or auto-create the customer row for this auth user.
+   *
+   * Prefers the server-authoritative resolve_customer() RPC (SECURITY DEFINER),
+   * which links/creates atomically and isn't defeated by RLS the way a raw
+   * client-side email lookup is. Falls back to the legacy direct-table path if
+   * the RPC isn't deployed yet (PGRST202) or errors — so this is safe to ship
+   * before the migration lands, and self-upgrades once it does.
    */
   async function _resolveCustomer(authUser) {
+    const meta = authUser.user_metadata || {}
+    const { data, error } = await supabase.rpc('resolve_customer', {
+      p_display_name: meta.full_name || meta.name || null,
+      p_avatar_url:   meta.avatar_url || null,
+    })
+    if (!error && data) {
+      return Array.isArray(data) ? (data[0] ?? null) : data
+    }
+    if (error) {
+      // PGRST202 = function not deployed yet → expected pre-migration; other
+      // errors also fall through to the legacy path to avoid any regression.
+      console.warn('[storeAuth] resolve_customer RPC unavailable, code:', error?.code)
+    }
+    return _resolveCustomerLegacy(authUser)
+  }
+
+  /** Legacy client-side resolve (pre-RPC). Kept as fallback only. */
+  async function _resolveCustomerLegacy(authUser) {
     const email = authUser.email
 
     // 1. By auth_user_id (returning user)

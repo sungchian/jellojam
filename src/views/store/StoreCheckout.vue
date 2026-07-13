@@ -453,7 +453,11 @@ const appliedCoupon  = ref(null)   // { code, description, discount_type, discou
 const discountAmount = computed(() => {
   if (!appliedCoupon.value) return 0
   const c = appliedCoupon.value
-  const base = cartSubtotal.value + addonTotal.value + shipping.value + codFee.value
+  // 折扣基數只算「商品小計」，不含運費/加購/貨到付款費 —— 與伺服器
+  // create_storefront_order 的算法一致（percent = 小計×%、fixed 上限為小計）。
+  // 用含運費的基數會讓預覽金額低於實際入帳，顧客到匯款頁才發現變多。
+  // 這只是預覽；最終以伺服器回傳的 result.total 為準。
+  const base = cartSubtotal.value
   if (c.discount_type === 'fixed')   return Math.min(c.discount_value, base)
   if (c.discount_type === 'percent') return Math.floor(base * c.discount_value / 100)
   return 0
